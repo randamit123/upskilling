@@ -7,8 +7,17 @@ from typing import Optional, Union, Dict, Any
 # Import torch first to check MPS availability
 try:
     import torch
+    import time  # For model warm-up timing
+    
+    # Check hardware acceleration options
     MPS_AVAILABLE = hasattr(torch.backends, 'mps') and torch.backends.mps.is_available()
     CUDA_AVAILABLE = torch.cuda.is_available()
+    if MPS_AVAILABLE:
+        logger = logging.getLogger(__name__)
+        logger.info("MPS acceleration is available")
+    elif CUDA_AVAILABLE:
+        logger = logging.getLogger(__name__)
+        logger.info("CUDA acceleration is available")
 except ImportError:
     MPS_AVAILABLE = False
     CUDA_AVAILABLE = False
@@ -154,31 +163,41 @@ def load_cpp_inference_model(model_path: str, **kwargs) -> LlamaCpp:
         else:
             n_gpu_layers = 0  # CPU only
         
-        # Base parameters optimized for MPS/CPU on Mac
+        # Extremely optimized parameters for minimum latency
         model_params = {
             'model_path': validated_path,
-            'n_ctx': 2048,  # Reduced context window for better performance
-            'n_threads': min(4, os.cpu_count() if os.cpu_count() else 4),  # Limit threads for better performance
+            'n_ctx': 256,            # Minimal context window for fastest processing
+            'n_threads': 8,          # Optimal thread count for Mac
             'n_gpu_layers': n_gpu_layers,  # Set based on hardware detection
-            'n_batch': 512,  # Process in smaller batches
-            'use_mlock': True,  # Prevent swapping to disk
-            'f16_kv': True,  # Use 16-bit key/value cache
-            'verbose': False,  # Disable verbose output
-            'temperature': 0.7,  # Slightly higher for more diverse responses
-            'top_p': 0.9,  # Nucleus sampling
-            'top_k': 40,  # Limit to top-k tokens
-            'max_tokens': 512,  # Reasonable response length
-            'repeat_penalty': 1.1,  # Slightly discourage repetition
-            'stop': ["\nHuman:", "\n###", "\n##"]  # Stop sequences
+            'n_batch': 512,          # Balanced batch size (too large can cause issues)
+            'use_mlock': True,       # Lock memory to prevent swapping
+            'f16_kv': True,          # Use 16-bit key/value cache
+            'seed': 42,              # Fixed seed for reproducibility
+            'verbose': False,        # Disable verbose output
+            'temperature': 0.1,      # Lower temperature for faster, more deterministic responses
+            'top_p': 0.1,            # Very focused sampling
+            'top_k': 10,             # Highly restrictive sampling
+            'max_tokens': 128,       # Very short responses for maximum speed
+            'repeat_penalty': 1.3,   # Strong repetition penalty
+            'stop': ["\nHuman:", "\n###", "\nH:", "\nUser:"]  # Stop sequences
         }
         
-        # If MPS is available, set up additional parameters
+        # Use more compatible MPS optimizations
         if MPS_AVAILABLE:
+            # Keep only parameters officially supported by LlamaCpp
             model_params.update({
-                'main_gpu': 0,  # Use the first GPU
-                'tensor_split': [1.0],  # Use full GPU
-                'n_threads': 4,  # Reduce CPU threads since we're using GPU
+                'n_gpu_layers': 1,     # Use GPU for at least one layer
+                'n_threads': 2,        # Minimal CPU threads
+                'n_batch': 512,        # Smaller batch for GPU
+                'f16_kv': True,        # 16-bit key/value cache
+                'use_mmap': False,     # Don't use memory mapping
+                'use_mlock': True      # Lock memory to prevent swapping
             })
+            
+            # Set Metal-specific environment variables
+            os.environ["GGML_METAL_PATH_RESOURCES"] = ""
+            os.environ["GGML_METAL_FULL_MEM"] = "1"
+            os.environ["METAL_DEVICE_WRAPPER_TYPE"] = "1"
         
         # Update with any user-provided kwargs (allowing overrides)
         model_params.update(kwargs)
@@ -189,16 +208,32 @@ def load_cpp_inference_model(model_path: str, **kwargs) -> LlamaCpp:
             # Initialize the model
             model = LlamaCpp(**model_params)
             
-            # Set device to MPS if available
-            if MPS_AVAILABLE and torch is not None:
-                try:
-                    # Use a more compatible approach for MPS
-                    model.client.ctx.metal = True
-                    logger.info("Enabled Metal acceleration")
-                except Exception as e:
-                    logger.warning(f"Could not enable Metal acceleration: {e}")
+            # Metal acceleration is handled automatically when n_gpu_layers > 0
+            if MPS_AVAILABLE:
+                logger.info("Running with Metal acceleration")
             else:
                 logger.info("Running on CPU")
+            
+            # Advanced pre-warming with multiple queries to fully initialize the model
+            if model is not None:
+                try:
+                    logger.info("Pre-warming model cache...")
+                    start_time = time.time()
+                    
+                    # First warm-up: very short
+                    _ = model.invoke("Hi", max_tokens=5)
+                    
+                    # Second warm-up: slightly longer but still fast
+                    _ = model.invoke("Tell me about AI", max_tokens=10)
+                    
+                    elapsed = time.time() - start_time
+                    logger.info(f"Model warm-up completed in {elapsed:.2f}s")
+                    
+                    # Log expected performance
+                    tokens_per_second = 15 / elapsed if elapsed > 0 else 0
+                    logger.info(f"Estimated performance: {tokens_per_second:.1f} tokens/second")
+                except Exception as e:
+                    logger.warning(f"Model warm-up failed: {e}")
             
             logger.info("Model loaded successfully")
             return model
