@@ -1,42 +1,420 @@
-# Project: Leidos Upskilling Hub Workshop
-Description: This project is for the Leidos Upskilling Hub Workshop. It is a web application that allows the Leidos Upskilling team employees to create and manage learning experiences.
+# Leidos Upskilling Hub Workshop – Windsurf AI Rules
 
-# Tech Stack
-Frontend:
-- Next.js 15
-- React 19
-- Tailwind CSS
-- Shadcn UI
-- React Hook Form
-- React Dropzone
-- React Beautiful DND
-- React Day Picker
-- React Resizable Panels
-- Recharts
-- Sonner
-- Zod
-- Zustand
-- TypeScript
-Backend:
-- Python
-- FastAPI
-- LangChain
-- Huggingface
-- LlamaCpp
-- Pydantic
+# Project Context
+- **Audience:** This web application is designed for **instructional designers and content creators**, not direct learners. All AI outputs should cater to content creators’ needs (course planning, content creation) rather than learner-facing instruction.
+- **Scope:** The platform supports **automated course generation**, **microlearning module creation**, **evaluation design** (assessments and feedback), **curated learning paths**, and **content tagging** using a proprietary skills taxonomy. It streamlines instructional design workflows by using AI to draft content and suggestions which creators can refine.
+- **Tone & Purpose:** AI-generated content should be **professional, concise, and relevant** to corporate learning. The system’s role is to assist in designing educational content that aligns with learning objectives and skill development frameworks.
+
+# Tech Stack & Dependencies
+- **Frontend:** Use **Next.js 15** (App Router architecture) with **React 19** for the UI. Styling must utilize **Tailwind CSS** and components from **Shadcn UI** (built on Radix UI). All code should be written in **TypeScript**.
+- **State Management:** Use **Zustand** for global/client state management instead of unwieldy React context or Redux:contentReference[oaicite:0]{index=0}. Handle form state with **React Hook Form** and validate form input schemas using **Zod**:contentReference[oaicite:1]{index=1}.
+- **Backend:** Use **FastAPI (Python)** to implement server-side API endpoints. Leverage **LangChain** for orchestration of LLMs (Large Language Models) and integration with **HuggingFace** transformers or local **LlamaCpp** models for AI-driven tasks. Use **Pydantic** for defining request/response models and data validation on the backend:contentReference[oaicite:2]{index=2}.
+- **Database/Storage:** Use **ChromaDB** as the vector database for embedding storage and similarity search (e.g., for content retrieval and tagging). If a relational database is needed for other data, ensure use of an appropriate ORM or connector (e.g., Prisma or SQLAlchemy) consistent with project needs.
+- **Testing:** Frontend code should use **Jest** (with React Testing Library) for unit and integration tests. Backend logic and APIs should use **Pytest** for testing, including FastAPI’s TestClient for API endpoints.
 
 # General Code Style & Formatting
-- Follow the Airbnb Style Guide for code formattingś
-- Use PascalCase for React component file names (e.g., UserCard.tsx, not user-card.tsx).
-- Prefer named exports for components.
+- **Style Guide:** Follow the **Airbnb Style Guide** for JavaScript/TypeScript code conventions (formatting, naming, etc.):contentReference[oaicite:3]{index=3}. Consistently use Prettier or a linter to maintain formatting standards.
+- **Naming:** Use **PascalCase** for React components and file names (e.g., `CourseOutline.tsx`, not `course_outline.tsx`):contentReference[oaicite:4]{index=4}. Use **camelCase** for variables and functions. Prefer clear, descriptive names with meaningful context (include auxiliary verbs like *getCourses*, *isLoading* for booleans):contentReference[oaicite:5]{index=5}.
+- **Exports:** Prefer **named exports** for React components and utilities:contentReference[oaicite:6]{index=6}. Avoid default exports except where Next.js conventions require them (such as page or route components).
+- **Syntax:** Use **functional components** and hooks; avoid class components entirely:contentReference[oaicite:7]{index=7}. Embrace **declarative** programming patterns and functional array methods (map, filter, reduce) rather than complex imperative loops.
+- **DRY & Modular:** Avoid code duplication – abstract repeating patterns into reusable components or utility functions:contentReference[oaicite:8]{index=8}. Keep functions short and focused; if a function exceeds ~20 lines or does multiple things, consider refactoring.
+- **Variables:** Declare types for all variables and function returns. **Do not use `any`** unless absolutely necessary:contentReference[oaicite:9]{index=9}. Avoid magic numbers or strings; use constants or configuration. Enable **TypeScript strict mode** to catch undefined/nullable issues early:contentReference[oaicite:10]{index=10}.
+- **Interfaces vs Types:** Use TypeScript **interfaces** for object shapes (props, data models) in most cases:contentReference[oaicite:11]{index=11}. This aids consistency and implements extending patterns. Avoid using `enum`; prefer literal union types or dictionaries for mapping constants:contentReference[oaicite:12]{index=12}.
+- **Comments:** Write self-explanatory code. Add comments only for complex logic or non-obvious decisions. Do **not** include AI prompt fragments or irrelevant comments in generated code (clean the output before finalizing).
+- **Formatting:** Use consistent indentation and spacing. For example, put a space between `{` and `}` in object literals and after `:` in type annotations. Use trailing commas in multi-line objects/arrays. Always terminate statements with semicolons. Use single quotes for strings (or follow the project’s Prettier config).
 
 # Project Structure & Architecture
-- Follow Next.js patterns and use the App Router.
-- Correctly determine when to use server vs. client components in Next.js.
+- **Next.js Architecture:** Follow Next.js App Router conventions for project structure:contentReference[oaicite:13]{index=13}. Organize frontend code by feature or domain. Use the Next.js `/app` directory for defining routes and layout. Use **server components vs client components** appropriately: server components for data fetching/rendering on server, and client components for interactive parts requiring state or browser APIs:contentReference[oaicite:14]{index=14}.
+- **Component Modularization:** Build **reusable UI components** for common elements (buttons, form fields, layout sections) using Shadcn UI as a base. Separate concerns by keeping presentational components free of business logic — use hooks or controller components to handle state/data and pass data down via props.
+- **State & Data Separation:** Do not overload React components with heavy data fetching or complex state. For example, use Next.js **server actions or API routes** for data retrieval, and keep components focused on rendering. Use **Zustand** stores or React context providers to handle cross-component state outside of the UI layer.
+- **Directories:** Follow a logical project structure. For instance, you might have:  
+  `/app/(site)/course/` for course-related pages and routes,  
+  `/components/` for shared presentational components,  
+  `/lib/` for utility functions (e.g., API clients, helpers),  
+  `/hooks/` for custom hooks (e.g., useCourseBuilder),  
+  `/services/` or `/api/` for API interaction logic (if not using Next API routes),  
+  `/schemas/` for Zod and Pydantic schema definitions.  
+  Keep files small and focused; one React component or logical unit per file is recommended.
+- **Server-Client Integration:** Next.js will primarily handle frontend and SSR. The **FastAPI backend** should be treated as a separate service – for example, accessible via fetch/axios calls from the frontend. Ensure CORS is configured if needed. Alternatively, use Next.js route handlers to proxy requests to FastAPI. Keep API URLs and endpoints in a config file or environment variables so they can be changed per environment easily.
+- **Example Folder Structure:**  
+  ```text
+  upskilling-hub/
+  ├── app/
+  │   ├── layout.tsx         # Root layout
+  │   └── (dashboard)/
+  │       ├── page.tsx       # Dashboard home
+  │       └── course/
+  │           ├── page.tsx   # Course list or creation page
+  │           └── [id]/
+  │               └── page.tsx   # Course detail/edit page
+  ├── components/
+  │   ├── ui/                # Shadcn UI wrapped components (buttons, dialogs, etc.)
+  │   ├── CourseOutline.tsx  # Example component for course outline (see below)
+  │   └── ... 
+  ├── hooks/
+  │   └── useCourseStore.ts  # Zustand store definition for course state
+  ├── lib/
+  │   └── apiClient.ts       # e.g., wrapper for fetch/axios calls to FastAPI
+  ├── backend/
+  │   └── main.py            # FastAPI application (could also be separate repo/service)
+  ├── schemas/
+  │   ├── contentSchemas.ts  # Zod schemas for frontend
+  │   └── models.py          # Pydantic models for backend
+  ├── tests/
+  │   ├── frontend/          # Jest tests
+  │   └── backend/           # Pytest tests
+  └── ... 
+
+* **PascalCase Components:** Each React component lives in its own file named with PascalCase and exports the component (preferably as a named export). For example, `CourseOutline.tsx` exports a `CourseOutline` component. Group related smaller components in the same file or a subfolder if they are only used by that component.
 
 # Styling & UI
-- Use Tailwind CSS for styling.
-- Use Shadcn UI for components.
 
-# Data Fetching & Forms
-- Use React Hook Form for form handling.
+* **Tailwind CSS:** Use Tailwind CSS utility classes for all styling. Avoid writing raw CSS unless absolutely necessary. Apply consistent spacing, sizing, and colors by leveraging the design system configured in Tailwind (e.g., use `p-4` for padding, text colors from the palette, etc.). Ensure classes are composed logically and not overly repetitive (use shared styles via component classes or `clsx` if needed).
+* **Shadcn UI Components:** Utilize **Shadcn UI** components (which are built on Radix UI) for common UI patterns (forms, modals, dropdowns, tables, etc.). This ensures accessible and well-structured HTML. Customize these components via props or class overrides rather than writing from scratch whenever possible.
+* **Responsiveness:** All pages and components should be responsive. Use Tailwind’s responsive modifiers (e.g., `md:p-8 lg:p-12`) to adjust layouts for different screen sizes. Test components at common breakpoints (mobile, tablet, desktop).
+* **Accessibility (a11y):** Follow accessibility best practices diligently. Use semantic HTML elements (e.g., buttons for clickable actions, form labels for inputs). Include **ARIA labels/roles** and keyboard navigation support where appropriate. For example, ensure modals trap focus, every interactive element is reachable via keyboard, and images have alt text if any (though this app is mostly content creation, any icon buttons should have aria-labels).
+* **UX/UI Consistency:** Maintain a clean and modern design consistent with enterprise applications. Use a consistent color scheme and typography (as provided by Tailwind config or design guidelines). Components from Shadcn UI should be theme-aligned. Avoid clutter in the interface; prioritize content by using whitespace and section dividers.
+* **Inline Icons & SVGs:** Use icon libraries (like Lucide or HeroIcons, which integrate with Shadcn) for small icons, ensuring they are properly sized and aligned via Tailwind classes.
+* **Conditional Rendering:** Use skeletons or spinners from Shadcn UI for loading states to keep the UI responsive and inform the user of background operations.
+* **No External UI Frameworks:** Do not introduce other styling frameworks or component libraries that conflict with Tailwind/Shadcn. Adhere to the chosen stack to ensure consistency.
+
+```tsx
+// Example React component using Shadcn UI and Tailwind CSS
+import { Button } from "@/components/ui/button"  // Shadcn UI button component
+import { useState } from "react"
+
+interface ModuleCardProps {
+  title: string;
+  summary: string;
+}
+
+export function ModuleCard({ title, summary }: ModuleCardProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="rounded-lg border border-gray-300 p-4 shadow-sm bg-white">
+      <h2 className="text-xl font-semibold mb-2">{title}</h2>
+      <p className="text-sm text-muted-foreground">{summary}</p>
+      <Button variant="outline" className="mt-4" onClick={() => setExpanded(!expanded)}>
+        {expanded ? "Show Less" : "Learn More"}
+      </Button>
+      {expanded && (
+        <div className="mt-3 text-sm text-gray-700">
+          {/* Additional details or extended content goes here */}
+          <p>Here is more information about the module...</p>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+*(In the above `ModuleCard` example, Tailwind utility classes are used for padding, borders, text styling, etc., and a Shadcn UI `<Button>` provides a consistent styled button. The component is stateful (using React `useState`) for expand/collapse, but business logic is minimal and could be extended via props.)*
+
+# Forms & Validation
+
+* **React Hook Form:** Use **React Hook Form** for building and handling form state, which offers better performance and simpler integration with validation compared to raw React useState for forms. Define forms using the `useForm` hook and specify a Zod resolver for validation.
+* **Zod (Frontend Validation):** Define input schemas with **Zod** and use them to strongly type form data. For example, define a `CourseSchema` with required fields like title, description, etc. Integrate with React Hook Form via `zodResolver` so that any invalid input is caught and reported to the user instantly.
+* **Pydantic (Backend Validation):** Mirror the Zod schemas with **Pydantic** models on the FastAPI side for request and response validation. This ensures the backend only processes valid data. Pydantic models should also enforce the same constraints (e.g., string length, value ranges) as Zod schemas to maintain consistency.
+* **Server-Side Validation:** Never trust client-side only validation. The FastAPI endpoints must validate incoming data using Pydantic and respond with clear error messages (FastAPI will auto-generate error responses for model validation errors; these can be leveraged to show errors in the UI).
+* **Error Handling:** When validation fails (either client or server side), ensure the user gets actionable feedback. For forms, display field errors near the inputs. For server errors (e.g., if an API returns 422 validation error), catch it in the frontend and map it to user-friendly messages.
+* **Schema Evolution:** Keep schemas in sync between frontend and backend. If a field is added or rules change, update both the Zod and Pydantic definitions. Consider maintaining a **single source of truth** for such definitions (for instance, define schema specs in a config and generate both Zod and Pydantic from it, if feasible).
+* **Example Zod Schema (Frontend) & Pydantic Model (Backend):** Define something like `CourseSchema = z.object({ title: z.string().min(5), ... })` on frontend and `class Course(BaseModel): title: constr(min_length=5) ...` on backend. This dual approach ensures consistency.
+
+```tsx
+// Example: Zod schema and integration with React Hook Form
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+// Define Zod schema for a course creation form
+const CourseSchema = z.object({
+  title: z.string().min(5, "Title must be at least 5 characters"),
+  description: z.string().max(500, "Description cannot exceed 500 characters"),
+  durationMinutes: z.number().int().positive().optional(),
+});
+type CourseFormData = z.infer<typeof CourseSchema>;
+
+function CourseForm() {
+  const { register, handleSubmit, formState: { errors } } = useForm<CourseFormData>({
+    resolver: zodResolver(CourseSchema)
+  });
+
+  const onSubmit = (data: CourseFormData) => {
+    // handle submission, e.g., call FastAPI endpoint
+    console.log("Validated data:", data);
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input {...register("title")} placeholder="Course Title" />
+      {errors.title && <p className="error">{errors.title.message}</p>}
+      <textarea {...register("description")} placeholder="Description" />
+      {errors.description && <p className="error">{errors.description.message}</p>}
+      {/* ...other fields... */}
+      <button type="submit">Create Course</button>
+    </form>
+  );
+}
+```
+
+*(The above form uses `zodResolver` to enforce that title is at least 5 chars, description max 500 chars. Similar rules should be enforced in the backend Pydantic model. The `errors` object from `useForm` provides validation feedback which we display under fields.)*
+
+# State Management
+
+* **Zustand for Global State:** Use **Zustand** to manage shared state across components (e.g. user info, course builder state, selected learning path). Zustand’s simple API and context-free architecture keep state logic decoupled from React component tree, improving code organization.
+* **State Slices:** Organize Zustand state into logical slices. For example, a `useCourseStore` might hold state for course creation (title, modules list, etc.), with actions to modify them. Another `useAuthStore` might handle user authentication info. This modular approach keeps state concerns separated by domain.
+* **Immutable Updates:** Leverage immutable update patterns or Immer within Zustand set functions. Never mutate state directly. For instance, use `set((state) => ({ modules: [...state.modules, newModule] }))` when adding an item, to ensure state updates correctly trigger re-renders.
+* **Selective Re-render:** Use Zustand’s `selector` functions or split stores to avoid re-rendering all components on state changes. Subscribe components only to the specific slice of state they need. This will help with performance as the app grows.
+* **Avoid Overuse:** Do not put everything in global state. Use component local state for truly local UI concerns. Only use Zustand for state that is either cross-component or should persist beyond navigation (e.g., a multi-step form’s data, or cached results from an expensive computation).
+* **Persisting State:** If certain state should persist (e.g., user preferences or in-progress work), use Zustand’s `persist` middleware to save to localStorage or IndexedDB. For sensitive data, consider encryption or don’t persist at all.
+* **Reset Patterns:** Provide actions in stores to **reset state** to initial values when appropriate (for example, after a course is successfully created, reset the course builder store).
+* **Type Safety:** Leverage TypeScript to define the shape of store state and actions. Create explicit types or interfaces for store state. This ensures that components using the store get proper type checking on state and actions.
+
+```tsx
+// Example Zustand store for course creation workflow
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+
+interface CourseBuilderState {
+  title: string;
+  modules: string[];
+  setTitle: (newTitle: string) => void;
+  addModule: (moduleTitle: string) => void;
+  resetCourse: () => void;
+}
+
+export const useCourseStore = create<CourseBuilderState>()(
+  persist(
+    (set) => ({
+      title: "",
+      modules: [],
+      setTitle: (newTitle) => set({ title: newTitle }),
+      addModule: (moduleTitle) =>
+        set((state) => ({ modules: [...state.modules, moduleTitle] })),
+      resetCourse: () => set({ title: "", modules: [] })
+    }),
+    { name: "course-storage" }
+  )
+);
+```
+
+*(In this example, we created a Zustand store with `persist` so that course builder data is saved (e.g., to localStorage) under the key `"course-storage"`. The state has a title and a list of modules with actions to update them. The `resetCourse` action helps clear the state when needed. This store can be used in React components by calling hooks like `const { title, modules, setTitle, addModule } = useCourseStore();`.)*
+
+# Backend & API Endpoints
+
+* **FastAPI Structure:** The backend should be organized with FastAPI routers for different domains (e.g., a router for courses, one for assessments, etc.). Keep the FastAPI app in a separate module (and potentially separate deployment) from the Next.js app. Maintain a clear interface (JSON endpoints) that the frontend can call.
+* **Pydantic Models:** Define **Pydantic** models for all request bodies and response schemas. This provides automatic validation and documentation. For example, a `MicrolearningRequest` model with fields like `topic: str` and `content: str` ensures the endpoint receives the expected data and returns a structured response. This mirrors the Zod schemas on the frontend for consistency.
+* **LangChain Integration:** Integrate LangChain within FastAPI endpoints for AI tasks (more details in the AI section below). For instance, an endpoint `/api/generate-module` might use a LangChain pipeline to generate a microlearning module summary or quiz based on input content. Use dependency injection or global variables to avoid reloading models on each request (initialize LLM models or vector store at startup).
+* **Asynchronous IO:** Use `async` FastAPI endpoints for IO-bound operations (database calls, web requests, LLM calls). This will allow the server to handle other requests while one request is waiting on an external API or a long computation.
+* **Error Handling:** Implement error handlers in FastAPI for common issues (e.g., a custom exception for LangChain errors or data not found). Return informative error messages and proper HTTP status codes. The frontend should handle these gracefully (showing an error notification or message).
+* **Security:** If the application requires authentication, use FastAPI’s OAuth2 or dependency-based auth. For internal tools, it might rely on corporate SSO tokens passed via headers. Ensure that any such tokens are required for protected endpoints. Also, sanitize all inputs (Pydantic helps here) and be mindful of injection even though primary inputs are likely text for LLM (e.g., avoid directly executing any code from input).
+* **Logging & Monitoring:** Add logging in the FastAPI app especially around AI generation calls (to monitor performance) and errors. This will aid in debugging and improving reliability.
+* **Example FastAPI Endpoint:** Below is a sample of a FastAPI route that could process a microlearning generation request:
+
+```python
+# Example FastAPI endpoint (integrated with LangChain for AI generation)
+from fastapi import FastAPI, APIRouter
+from pydantic import BaseModel
+# Imagine we have some LangChain utilities imported:
+from langchain.chains import LLMChain
+from langchain.llms import HuggingFacePipeline
+
+app = FastAPI()
+router = APIRouter()
+
+# Pydantic model for the request
+class MicrolearningRequest(BaseModel):
+    topic: str
+    content: str
+
+# Dummy LLM setup (HuggingFace or LlamaCpp pipeline)
+llm = HuggingFacePipeline.from_model_id(model_id="google/flan-t5-small")  # Example model
+chain = LLMChain(llm=llm, prompt_template="Summarize the following content for a microlearning module:")
+
+@router.post("/microlearning/generate")
+async def generate_microlearning(data: MicrolearningRequest):
+    """Generate a microlearning module summary based on the provided content."""
+    # Use LangChain chain to get summary (this is a simplification)
+    summary = chain.run(data.content)
+    # In practice, you might have more complex logic: e.g., generate summary, then quiz Q&A.
+    return { "topic": data.topic, "summary": summary }
+
+app.include_router(router, prefix="/api")
+```
+
+*(The above FastAPI example uses a HuggingFace model via LangChain to summarize content. In a real app, you’d initialize the model pipeline at startup (not per request) for performance. The endpoint returns JSON with the topic and generated summary. The Next.js frontend would call `/api/microlearning/generate` with appropriate JSON and display the returned summary to the content creator.)*
+
+# AI Integration & Vector Database (LangChain & ChromaDB)
+
+* **LangChain for Workflow:** Use **LangChain** to compose prompts and manage interactions with LLMs. Encapsulate AI logic (like content generation, question answering, or tagging) in LangChain chains or agents. For example, to generate quiz questions from content, use a LangChain chain that takes content and produces Q\&A pairs.
+* **Models:** Prefer using **HuggingFace Transformers** models (via pipelines or the HuggingFace Hub) or local LLMs via **LlamaCpp** for AI tasks, especially if data sensitivity requires avoiding external API calls. Ensure the model used is suitable for the task (e.g., use an instructional/fine-tuned model for content generation if available).
+* **ChromaDB Vector Store:** Utilize **ChromaDB** for storing embeddings of content and enabling semantic search. For instance, when implementing content tagging or Q\&A, embed all learning content (course materials, modules) and store in ChromaDB. This allows retrieval of relevant pieces when a new query or content is presented (Retrieval-Augmented Generation approach).
+* **Integration Pattern:** The typical pattern is: content is fed through an embedding model (could be via LangChain’s embedding APIs) to get a vector, which is stored in ChromaDB with metadata. When needed (e.g., to find similar content or prerequisites), query ChromaDB for nearest vectors. Use LangChain’s integrations to simplify this (e.g., `Chroma` vector store integration as a retriever).
+* **Example Use Case:** When a content creator inputs a new module, the system could automatically extract key topics or prerequisite skills by comparing the module’s embedding with the existing library in ChromaDB. LangChain can automate this: it finds similar content and maybe uses an LLM to label the skills.
+* **Pydantic + LangChain:** When exposing AI functionality through FastAPI, use Pydantic for the input/output models to validate data types and structure (for example, ensure the prompt or content is a string and not too large). **LangServe** or similar frameworks can wrap LangChain chains as FastAPI endpoints, but even without it, the integration is straightforward since LangChain functions can be called inside endpoint logic.
+* **Performance Consideration:** Loading large models can be slow; consider initializing the model globally (as shown in the example above with `llm = HuggingFacePipeline...` outside the request function). Similarly, maintain a global ChromaDB client/collection so that each request doesn’t have to reinstantiate the database connection. Use async IO for embedding calls if the library supports it.
+* **Error Handling in AI:** Wrap AI calls in try/except to handle any model errors or timeouts gracefully. For example, if a generation fails or times out, return a message suggesting the user try again or simplifying the input.
+* **Privacy:** If using HuggingFace or other external APIs, be mindful of the content (especially if proprietary) being sent out. Prefer local models (via LlamaCpp or hosting your own models) for sensitive data. ChromaDB should ideally be hosted securely as well, since it contains embedded proprietary content.
+* **Traceability:** Log the prompts and results (at least in a debug mode) for AI operations. This helps in auditing what the AI is doing and is useful for refining prompts in the future.
+
+# Unit Testing Practices
+
+* **Frontend Testing (Jest):** Write **Jest** tests for all React components and hooks. Use **@testing-library/react** to render components and simulate user interactions. Focus on critical workflows: e.g., test that the course outline component correctly displays modules, or that the form validation shows errors when given bad input. Aim for high coverage on pure functions (utils) and reasonable coverage on components (especially those with conditional logic).
+* **Backend Testing (Pytest):** Use **Pytest** for testing FastAPI endpoints and core logic. FastAPI provides a `TestClient` to simulate HTTP calls. Write tests for each API route (e.g., test that `/microlearning/generate` returns a summary given sample input). Also test utility functions (like any content processing or tagging functions separate from the API).
+* **Test Data:** Use realistic sample data in tests to ensure the logic holds (e.g., a sample course content text to generate a summary from). However, for LLM interactions, you might want to **mock AI calls** in unit tests to keep them deterministic (for instance, monkeypatch the LangChain chain to return a fixed output). Integration tests could allow actual model calls if needed, but these should be isolated and perhaps skipped in CI for speed.
+* **Snapshot and Regression Testing:** For frontend, use snapshot tests for components if appropriate (though be careful with large DOM snapshots). For backend, consider snapshot-testing some JSON outputs (e.g., the structure of an API response) to detect unintended changes.
+* **Testing Library Conventions:** In React tests, use screen queries (`screen.getByText`, `screen.queryByRole`, etc.) to verify content. Avoid testing implementation details like component state; test via user behavior and expected UI changes.
+* **Coverage:** Strive for a high test coverage especially in critical modules (content generation logic, tagging algorithm, etc.). This ensures reliability as the project grows.
+* **Continuous Testing:** Integrate tests into the CI pipeline. Given the data-intensive nature, also test performance where possible (e.g., a test that indexes 100 documents in ChromaDB and ensures it completes under X seconds to guard against performance regressions).
+* **Example Tests:** Below are simple examples of a Jest test for a React component and a Pytest for a FastAPI endpoint:
+
+```tsx
+// Example Jest test for a React component
+import { render, screen, fireEvent } from "@testing-library/react";
+import { ModuleCard } from "@/components/ModuleCard";
+
+test("ModuleCard expands and collapses on button click", () => {
+  render(<ModuleCard title="Test Module" summary="A short summary." />);
+  // Title and summary should be visible
+  expect(screen.getByText("Test Module")).toBeInTheDocument();
+  expect(screen.getByText("A short summary.")).toBeInTheDocument();
+  // Details should be hidden initially
+  expect(screen.queryByText(/more information/i)).toBeNull();
+  // Click the "Learn More" button to expand details
+  fireEvent.click(screen.getByRole('button', { name: /learn more/i }));
+  expect(screen.getByText("Here is more information about the module...")).toBeInTheDocument();
+  // Clicking again should hide details
+  fireEvent.click(screen.getByRole('button', { name: /show less/i }));
+  expect(screen.queryByText("Here is more information about the module...")).toBeNull();
+});
+```
+
+```python
+# Example Pytest for FastAPI endpoint
+from fastapi.testclient import TestClient
+from backend.main import app  # assuming the FastAPI app is defined in backend/main.py
+
+client = TestClient(app)
+
+def test_generate_microlearning_summary():
+    # Given sample input data
+    request_data = { "topic": "Safety Training", "content": "Always wear a hard hat on site." }
+    response = client.post("/api/microlearning/generate", json=request_data)
+    assert response.status_code == 200
+    data = response.json()
+    # The response should contain the topic and a summary string
+    assert data["topic"] == "Safety Training"
+    assert "summary" in data
+    assert isinstance(data["summary"], str)
+    # (If we had a deterministic model, we could assert something about the summary content)
+```
+
+*(These tests illustrate basic checks. The Jest test renders the `ModuleCard` and simulates clicks to ensure the expand/collapse logic works and content appears/disappears accordingly. The Pytest example uses FastAPI’s TestClient to call the API and checks that the response has the expected structure. In real scenarios, we might mock out the AI call to return a preset summary for consistency in tests.)*
+
+# Course Outline Generation
+
+* **Outline Structure:** When generating a course outline, structure it hierarchically. For example, a course outline might consist of **Modules** (or Sections), each containing **Lessons** or topics. The AI should produce or assist in creating an outline with this structure clearly delineated (e.g., numbered modules and sub-items for lessons).
+* **Component & Data Model:** Implement a React component (e.g., `CourseOutline.tsx`) to display a course outline. It might take a data model like:
+
+  ```ts
+  type CourseOutline = { title: string; modules: Array<{ title: string; lessons: string[] }> };
+  ```
+
+  The component can render module titles and a nested list of lessons. This separation of data and presentation allows reusing the outline structure for different courses.
+* **AI Generation of Outline:** Provide prompt templates to the LLM to generate course outlines. For example: *“Given the course title and objectives, generate a list of module titles with 1-2 sentence descriptions and lesson topics for each module.”* Ensure the AI output is parsed into the data model. LangChain can help with structured output parsing (perhaps using a regex or JSON format in the prompt).
+* **Editing and Refinement:** The AI-generated outline is a draft. The system should allow content creators to edit module names, reorder modules, add or remove lessons. The outline component should support this (drag-and-drop ordering or simple up/down controls for ordering).
+* **Learning Objectives Alignment:** Encourage aligning each module with learning objectives. E.g., if a module’s content corresponds to a specific learning goal, that should be evident. The AI can be prompted to mention which objective is addressed by each module (if objectives are provided as input).
+* **Example Prompt Usage:** If the user provides high-level topics, the AI should expand them into a structured outline. E.g., input: “Course on Workplace Safety, covering PPE, Emergency Protocols, and Ergonomics” – AI might output 3 modules with subtopics. Always include instructions to the AI to be concise and logically ordered.
+* **Formatting:** The outline, when displayed or output, should be clean and use consistent numbering or bulleting for modules vs lessons. For instance, modules numbered 1,2,3 and lessons as a, b, c or bullet points. In documentation or export, use Markdown or a similar structure for clarity.
+
+# Microlearning Module Creation
+
+* **Purpose:** Microlearning modules are small, focused pieces of learning content (e.g., a short lesson or an interactive activity). The system should help generate these quickly from minimal input.
+* **Input & Output:** Typically, a content creator might input a topic or paste a reference text. The AI should output a concise module content – for example, a brief **summary**, a couple of **key points or tips**, and possibly a **knowledge check question**.
+* **LangChain Workflow:** Use LangChain to orchestrate this generation. For example, a chain could: take the input text -> summarize it (to get the key ideas) -> then perhaps generate a question based on it. Each step can be a sub-prompt in the chain. The final result is structured content for the microlearning module.
+* **API Endpoint:** Expose a FastAPI endpoint like `/microlearning/generate` (as shown earlier) that accepts the necessary input (topic/text) and returns a JSON with the generated components (summary, key points, questions). The frontend can then display these in a preview for the creator.
+* **Editing:** AI-generated microlearning content should be editable by the user. Provide a UI where the summary, points, etc., are in text fields after generation, allowing the user to tweak phrasing or add details. This acknowledges that AI content might need human polishing.
+* **Length & Tone:** Ensure the generated module content is brief (microlearning should be a few minutes of reading or less). The tone should be instructional but engaging, often in second person (addressing "you" as the learner) *unless* the content creators prefer a different style. However, since the audience is the creator, the AI can suggest the content in a form ready for learners.
+* **Tagging and Metadata:** If possible, auto-suggest tags or categories for the microlearning module (using the tagging system mentioned below). For instance, if the module is about “Workplace Safety”, tag it with “Safety” or specific safety-related skill codes.
+* **Testing:** When building this feature, test the AI output for a variety of topics to ensure it remains on point and doesn’t include extraneous information. The chain might need prompt tuning to focus it.
+* **Reuse of Content:** If the module is derived from existing content (say a larger course), consider using ChromaDB to retrieve that content’s context so the AI can use it for more accurate summarization or question generation.
+
+# Skill Tagging & Taxonomy Integration
+
+* **Proprietary Taxonomy:** The application uses a proprietary skills or competency taxonomy for tagging content. This likely means there is a predefined list of skill tags or categories that content can be labeled with (for example, tags like “Project Management”, “Safety Compliance Level 2”, etc.). Make sure the AI is aware of or has access to this taxonomy for consistent tagging.
+* **Automatic Tagging:** Implement an AI-driven process to **extract skills or keywords** from content. For example, when a course or module is created, the system can analyze its text and suggest relevant skill tags. This could involve comparing content embeddings to embeddings of skill descriptions (if such data is available) or using a classification model.
+* **Content Mapping:** Use **content mapping (skills-to-content matching)** to help align content with the taxonomy. For instance, if the taxonomy entry “Emergency Response” exists, and a module content contains related keywords (fire drill, evacuation), the system should suggest “Emergency Response” as a tag.
+* **AI Prompt for Tagging:** A possible LangChain prompt could be: “Extract up to 5 key skills or topics from the following content, using the established taxonomy terms if they match.” Then feed in the content. The output should be a list of tags. Use a strict format (like JSON list) to parse easily.
+* **Manual Oversight:** Always allow the user to accept, remove, or add tags. The AI suggestions should appear as checkboxes or pills that the user can confirm or dismiss. Content creators have domain knowledge to refine these tags.
+* **Consistency:** Ensure that tagging is done at appropriate granularity. For example, tag at the course level for broad skills and at module level for specific skills. But avoid tagging every single minor concept (too granular tags reduce usefulness).
+* **Usage of Tags:** These tags will likely be used for search and for building learning paths. Ensure they are stored consistently (e.g., by unique ID or standardized name from the taxonomy). If the taxonomy updates (new skill names), have a plan to update tags accordingly.
+* **Avoid Over-Tagging:** The AI might pick many related terms; impose a reasonable limit (perhaps 5–7 tags per module, and maybe 3–5 primary tags per course) to keep tagging focused on the most relevant skills.
+
+# Assessments & Evaluation Design
+
+* **Assessment Generation:** The system should assist in creating **assessments** (quizzes, tests, knowledge checks) aligned with each course’s learning objectives. For each learning objective, ideally generate at least one question that tests that objective. Use AI to draft questions and even possible answers.
+* **Question Types:** Focus on common question types like multiple-choice, true/false, short answer. AI can generate a multiple-choice question by providing a correct answer and plausible distractors. Ensure the correct answer is marked or identifiable in the output so the content creator knows which it is.
+* **Kirkpatrick Level 2 – Learning:** By creating these knowledge checks, the system addresses Kirkpatrick’s Level 2 (Learning) evaluation – measuring the increase in knowledge or skills. Encourage designers to place these assessments right after the relevant content.
+* **Quality of Questions:** Instruct the AI (via rules or prompt) to generate clear, unambiguous questions. They should be directly tied to the content. Avoid trick questions or overly complex wording. Each question should ideally include feedback or explanation for the answer, which can be generated or at least a bullet point for the content creator to fill.
+* **Evaluation Design Workflow:** Possibly include an “Assessment Designer” interface where creators can select a module and click “Generate Quiz Questions”. The AI then produces a set of questions for that module’s content. The creator reviews and edits them. This speeds up assessment creation significantly.
+* **Alignment to Objectives:** Label each question with the objective it covers. The AI should be given the objective text if available. e.g., *“Objective: Understand proper PPE usage. Question: 'Which of the following is required PPE for a construction site?'...”*. This traceability ensures that every objective is assessed.
+* **Prevent Data Leakage:** If the AI has access to content, ensure it doesn’t directly copy full sentences from the learning material as the question stem (which could make the answer obvious). Instead, it should rephrase or test application of knowledge.
+* **Kirkpatrick Level 3 & 4 Consideration:** The system might also encourage thinking about behavior and results (Levels 3 and 4 of Kirkpatrick) in the design phase. For example, after content creation, ask the creator “What on-the-job behaviors should improve?” (Level 3) and “What business results are targeted?” (Level 4). These aren’t for the AI to generate as code, but the rules can remind the AI to prompt the user or provide guidance to think about those in the content or follow-up.
+
+# Kirkpatrick Evaluation Summaries
+
+* **Level 1-4 Data:** After training is delivered, evaluation data may include Level 1 (reaction: participant feedback), Level 2 (quizzes/tests scores, as above), Level 3 (behavior change, often from surveys or observations), and Level 4 (results, e.g., KPIs like accident rates, productivity metrics). The system should help summarize these for reporting.
+* **AI Summarization:** Use AI to generate **executive summaries** of this evaluation data. For example, if you have collected feedback forms and test results, an AI prompt could be: *“Summarize the following training evaluation data. Highlight key findings for each Kirkpatrick level in a few bullets.”* Provide structured data or textual summaries to the LLM, and it can output a polished summary.
+* **Executive-Level Tone:** The summary should be written in a professional, executive tone – focusing on high-level insights and recommendations. For example: *“Level 1 (Reaction): 95% of participants rated the training as engaging. Level 2 (Learning): Average post-test score was 88%, indicating a significant knowledge gain. Level 3 (Behavior): Within 3 months, 70% of managers observed improved safety compliance on teams. Level 4 (Results): Incident reports dropped by 50% compared to last quarter, suggesting a positive impact on safety outcomes.”* This kind of summary highlights value to stakeholders.
+* **Data Handling:** Some of this data might be numeric or survey-based. Ensure the AI is given properly formatted input (maybe a JSON with stats or a bullet list of facts). The AI should not hallucinate numbers – it must derive statements from actual provided data.
+* **Confidentiality:** Evaluation data can be sensitive. Summaries should not include any personal identifiers or raw comments verbatim without review. If the AI is summarizing open feedback comments, it should generalize (e.g., “Several participants mentioned the need for more hands-on examples.” rather than quoting someone directly).
+* **Insight and Recommendation:** Encourage the summary to include a recommendation or conclusion, if appropriate. e.g., *“Recommendation: Continue reinforcing safety protocols quarterly to maintain behavior change over time.”* This moves beyond just summarizing to providing actionable insight.
+* **Verification:** Because these summaries will be seen by leadership, have a human review them for accuracy. Small inaccuracies could undermine credibility. The rules should instruct the AI to be factual and not guess. If data is insufficient to make a claim (e.g., Level 4 data was not collected), the summary should note that rather than fabricate a narrative.
+
+# Learning Path Curation
+
+* **Personalized Paths:** The system should help create **curated learning paths**, which are sequences of courses or modules tailored to a learner’s role or development needs. For example, a path for “New Manager Onboarding” might include modules on communication, leadership, company policies, etc.
+* **AI Suggestions:** Use AI to suggest what content to include in a path given a target skill set or role. For instance, if the user says “Create a path for a new Data Analyst”, the system can list relevant existing courses (by analyzing their tags or descriptions) to include. This might involve matching required skills for the role with tags of available content (skills-to-content mapping).
+* **Content Mapping for Paths:** Ensure there’s a mapping of **skills to content**. If the user or an external input provides the required competencies for a role, the system should find content items (courses, modules) that teach those competencies. This can be powered by querying the vector database (ChromaDB) or a simple tag filter.
+* **Prerequisites and Order:** The AI should arrange the path in a logical order. Basic topics come first, advanced later. It should be aware of prerequisites (if Course B requires knowledge from Course A, put A first). If such explicit metadata exists, use it. Otherwise, infer based on content difficulty or level indicated in descriptions.
+* **Duration & Load:** A curated path should be mindful of total learning time. The AI can sum durations (if known) or number of modules to ensure the path isn’t too overwhelming. Possibly it can suggest splitting into phases if too long.
+* **Presentation:** Represent the learning path clearly in the UI – maybe as a timeline or a list with sequence numbers. Each item can show title, est. duration, and a brief description. The content creator can then modify the list (remove or add items, change order) before finalizing the path.
+* **Performance:** **Path curation is data-intensive** if the library of content is large. Querying many items or checking skill matches could be heavy. Optimize by indexing content by skill tags and caching results. Use efficient search in ChromaDB by limiting vector search to top N relevant items for each skill.
+* **Adaptation:** If the organization’s content library updates (new courses added), provide ways to update existing paths or suggest new content for them. The AI could periodically re-run a suggestion process to see if new items fit a path better.
+* **Feedback Loop:** If learners or managers provide feedback that a path was useful or had gaps, use that information to refine future AI suggestions. (This might be outside the immediate scope, but a note for future improvement).
+
+# Content Sensitivity & Role Relevance
+
+* **Professional & Appropriate Content:** Ensure all AI-generated content is suitable for a workplace learning context. Avoid language or examples that are too informal, sensitive, or could be offensive. For instance, examples should be workplace-appropriate and inclusive. If the training content touches on sensitive topics (e.g., harassment, diversity), the AI should handle them with care and factual correctness, adhering to any provided guidelines on those topics.
+* **Role-Based Tone:** The system’s outputs should recognize that the **user is a content creator/instructional designer**, not the end-learner. That means, for example, when the user asks for a summary or explanation, the AI might provide extra implementation detail or suggestions (“You could explain this concept with a diagram,” etc.), which is useful to the creator. In contrast, it should *not* directly address a learner or assume the role of instructor in its tone, unless specifically asked to generate learner-facing text.
+* **Avoid Teaching in Explanations:** If the content creator asks the AI a question (e.g., “How do I design a quiz on X?”), the AI answer should be instructive to the designer (like a colleague giving advice), not phrased as if teaching the material to a student. Keep a clear boundary between **instructional guidance** vs. **learning content**.
+* **Privacy and Examples:** Do not use real personal data or proprietary company info in examples. If examples are needed in generated content, use generic names (e.g., “ACME Corp” or “John Doe”) or anonymized data. This prevents any sensitive information leakage.
+* **Bias and Fairness:** The AI should avoid biases in content. For instance, if generating scenarios or characters, vary demographics (use inclusive names, roles, genders, etc.). Ensure compliance with any content guidelines (like not reinforcing stereotypes).
+* **Feedback Sensitivity:** When summarizing feedback or evaluations (Kirkpatrick Level 1), be diplomatic. If some feedback is negative, present it constructively. The AI should help the user communicate issues in a professional tone (e.g., instead of “People hated the course,” say “Several participants found the course less engaging, indicating a need for more interactivity.”).
+* **Regulatory Compliance:** If the organization or industry has compliance requirements for content (like accessibility standards, legal disclaimers, etc.), the AI should be aware or the rules should mention them. For example, if generating content for healthcare, avoid making medical advice statements; if for finance, ensure disclaimers for advice. This might not be fully handled by AI, but at least caution the user.
+
+# Performance & Reliability
+
+* **Efficiency:** The application should remain performant even as data scales. Content mapping and path curation might involve searching through a large content library. Use indexing and efficient query mechanisms. For example, maintain an inverted index of tags to courses for quick lookup, and use vector search in ChromaDB with appropriate dimension and indexing settings. *Be mindful that extremely data-heavy evaluations or queries can strain the system, so always prefer optimized approaches.*
+* **Asynchronous Processing:** Offload heavy tasks to background jobs or async processes. For example, generating a full course worth of content or analyzing a huge text for tagging might be done in a worker process, with the frontend polling for results or being notified when ready. This keeps the UI responsive. Utilize Python async features or task queues (like Celery or FastAPI’s `BackgroundTasks`) for such scenarios.
+* **Caching:** Implement caching for repeated expensive operations. If multiple users will generate similar content or the same user re-generates, cache the results of AI calls when possible (bearing in mind content changes). For instance, cache embeddings for content items in ChromaDB so you don’t recompute them each time. Also, if using external APIs (like HuggingFace inference), cache their responses for identical inputs to save time and cost.
+* **Error Resilience:** The system should handle AI failures gracefully. If an AI call times out or returns an error, catch it and surface a friendly message to the user (“The content generation is taking longer than expected, please try again” or “Unable to generate summary, please refine the input.”). Do not let the entire app crash or hang. Include retries if appropriate (maybe try a simpler model if a complex one fails).
+* **Resource Management:** Because LLMs can be memory- and CPU-intensive, manage resources carefully. If using LlamaCpp, ensure the model size fits the available memory. Possibly limit the length of input content (e.g., chunk very long texts) to prevent the model from choking. Use streaming generation for long outputs so the user sees partial results (this is supported in FastAPI with event streams or in Next.js with SSR streaming).
+* **Scalability:** Anticipate multiple users. The rules should guide to avoid designs that only work for a single user or assume sequential usage. For example, a global singleton state for AI might become a bottleneck if not managed (you might need a queue for AI requests or multiple workers).
+* **Monitoring:** Implement monitoring for performance (response times of endpoints, latency of AI calls, etc.). This could be as simple as logging durations or as involved as integrating with an APM tool. If an operation consistently takes too long, investigate and optimize.
+* **Global AI Rules Compliance:** These project-specific rules should not conflict with global AI usage policies (the AI will have a base knowledge cutoff and ethical rules). Ensure that none of the instructions here encourage the AI to violate those (e.g., we’re not asking it to produce disallowed content). If there is any potential conflict, explicitly instruct the AI to follow the higher-level policy.
+* **Testing Performance:** Include load testing or at least some performance tests for data-intensive parts. For example, simulate tagging 100 pieces of content or generating a path with 50 items and ensure it completes within a reasonable time. Optimize queries or algorithms if not.
+* **Reliability Over Speed:** Emphasize accuracy and robustness over sheer speed. Content generation that is correct and relevant but takes a few seconds is better than something fast but wrong. However, for a good UX, try to keep AI responses within \~10 seconds. Use spinners/progress bars to manage user expectations for longer processes.
+
+```yaml
+# (No actual YAML in project, but pseudo-config could look like)
+performance_targets:
+  microlearning_generation_ms: 5000   # aim to generate a module within 5s
+  content_tagging_ms: 3000           # tagging complete within 3s
+  path_curation_ms: 5000             # path suggestion within 5s for average library
+```
+
+*(The above pseudo-YAML is just illustrative of performance targets that might be set. Ensuring reliability means setting expectations and meeting them.)*
+
+---

@@ -24,6 +24,8 @@ interface UserProfile {
     level: number // 1-5
   }[]
   contentGoals: string[] // Content development goals
+  learningStyle?: string // Visual, Auditory, Reading, Kinesthetic
+  theme?: string // User interface theme preference
 }
 
 interface UserProfileState {

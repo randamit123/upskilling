@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
+import { useTheme } from "next-themes"
 import { PageHeader } from "@/components/layout/page-header"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,6 +20,7 @@ import { X, Plus } from "lucide-react"
 export default function SettingsPage() {
   const searchParams = useSearchParams()
   const tabParam = searchParams.get("tab")
+  const { theme, setTheme } = useTheme()
   
   // Get user profile data and update functions from store
   const { profile, updateProfile, addTopicOfInterest, removeTopicOfInterest, updateSkill } = useUserProfileStore()
@@ -36,7 +38,7 @@ export default function SettingsPage() {
   
   const [newTopic, setNewTopic] = useState('')
   const [isAddingTopic, setIsAddingTopic] = useState(false)
-  const [selectedLearningStyle, setSelectedLearningStyle] = useState(profile.preferredLearningStyle)
+  const [selectedLearningStyle, setSelectedLearningStyle] = useState(profile.learningStyle || 'visual')
 
   // Initialize default tab from URL params if present
   const [activeTab, setActiveTab] = useState(tabParam || "account")
@@ -53,7 +55,7 @@ export default function SettingsPage() {
       newPassword: "",
       confirmPassword: ""
     })
-    setSelectedLearningStyle(profile.preferredLearningStyle)
+    setSelectedLearningStyle(profile.learningStyle || 'visual')
   }, [profile])
   
   // Handle form input changes
@@ -113,7 +115,7 @@ export default function SettingsPage() {
   
   // Handle updating learning style
   const handleUpdateLearningStyle = () => {
-    updateProfile({ preferredLearningStyle: selectedLearningStyle })
+    updateProfile({ learningStyle: selectedLearningStyle })
     toast.success("Learning style updated successfully")
   }
   
@@ -403,7 +405,14 @@ export default function SettingsPage() {
                 <h3 className="text-sm font-medium">Theme</h3>
                 <div className="space-y-2">
                   <Label htmlFor="theme">Color Theme</Label>
-                  <Select defaultValue="system">
+                  <Select
+                    value={theme || 'system'}
+                    onValueChange={(value) => {
+                      setTheme(value);
+                      updateProfile({ theme: value });
+                      toast.success("Theme updated successfully");
+                    }}
+                  >
                     <SelectTrigger id="theme">
                       <SelectValue placeholder="Select theme" />
                     </SelectTrigger>

@@ -4,6 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Breadcrumbs } from "@/components/layout/breadcrumbs"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@/lib/utils"
 import { useSidebarStore } from "@/store/sidebarStore"
 
@@ -24,7 +25,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         )}
       >
         <div className="container py-6">
-          <Breadcrumbs />
+          <div className="flex items-center justify-between">
+            <Breadcrumbs />
+            <ThemeToggle />
+          </div>
           <div className="mt-4">{children}</div>
         </div>
       </main>
