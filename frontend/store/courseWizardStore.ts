@@ -43,11 +43,21 @@ export type LearningObject = {
   position: number
 }
 
+export type ComprehensivenessLevel = "brief" | "balanced" | "comprehensive"
+export type CourseLength = "short" | "medium" | "long"
+export type SkillLevel = "beginner" | "intermediate" | "advanced"
+
 export interface CourseWizardState {
   activeStep: number
   uploadedFiles: UploadedFile[]
   courseTitle: string
   courseSummary: string
+  // New course metadata fields
+  customPrompt: string
+  comprehensivenessLevel: ComprehensivenessLevel
+  courseLength: CourseLength
+  skillLevel: SkillLevel
+  // Existing fields
   modules: Module[]
   learningObjectives: LearningObjective[]
   skills: Skill[]
@@ -61,6 +71,12 @@ export interface CourseWizardState {
   removeUploadedFile: (id: string) => void
   setCourseTitle: (title: string) => void
   setCourseSummary: (summary: string) => void
+  // New metadata actions
+  setCustomPrompt: (prompt: string) => void
+  setComprehensivenessLevel: (level: ComprehensivenessLevel) => void
+  setCourseLength: (length: CourseLength) => void
+  setSkillLevel: (level: SkillLevel) => void
+  // Existing actions
   setModules: (modules: Module[]) => void
   updateModule: (moduleId: string, updates: Partial<Module>) => void
   setLearningObjectives: (objectives: LearningObjective[]) => void
@@ -85,6 +101,12 @@ const initialState = {
   uploadedFiles: [],
   courseTitle: "",
   courseSummary: "",
+  // New metadata with defaults
+  customPrompt: "",
+  comprehensivenessLevel: "balanced" as ComprehensivenessLevel,
+  courseLength: "medium" as CourseLength,
+  skillLevel: "intermediate" as SkillLevel,
+  // Existing fields
   modules: [],
   learningObjectives: [],
   skills: [],
@@ -101,7 +123,9 @@ export const useCourseWizardStore = create<CourseWizardState>()(
       setActiveStep: (step) => set({ activeStep: step }),
       
       addUploadedFile: (file) => 
-        set((state) => ({ uploadedFiles: [...state.uploadedFiles, file] })),
+        set((state) => ({ 
+          uploadedFiles: [...state.uploadedFiles, file] 
+        })),
       
       removeUploadedFile: (id) => 
         set((state) => ({ 
@@ -111,6 +135,12 @@ export const useCourseWizardStore = create<CourseWizardState>()(
       setCourseTitle: (title) => set({ courseTitle: title }),
       
       setCourseSummary: (summary) => set({ courseSummary: summary }),
+      
+      // New metadata setters
+      setCustomPrompt: (prompt) => set({ customPrompt: prompt }),
+      setComprehensivenessLevel: (level) => set({ comprehensivenessLevel: level }),
+      setCourseLength: (length) => set({ courseLength: length }),
+      setSkillLevel: (level) => set({ skillLevel: level }),
       
       setModules: (modules) => set({ modules }),
       

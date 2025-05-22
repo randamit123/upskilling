@@ -1,204 +1,209 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useRef, useCallback } from "react"
 import { useDropzone } from "react-dropzone"
-import { CheckCircle2, X, FileText, File, Upload, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
 import { toast } from "@/components/ui/use-toast"
-import { cn } from "@/lib/utils"
-import { UploadedFile } from "@/store/courseWizardStore"
+import type { UploadedFile } from "@/store/courseWizardStore"
 import { v4 as uuidv4 } from "uuid"
+import { File, X, Upload, FileText, FileImage, FileArchive, FilePlus } from "lucide-react"
+import { RadialProgress } from "./ui/radial-progress"
 
 interface FileUploaderProps {
   onFilesUploaded: (files: UploadedFile[]) => void
   maxFiles?: number
   acceptedFileTypes?: string[]
-  className?: string
 }
 
 export function FileUploader({
   onFilesUploaded,
   maxFiles = 10,
-  acceptedFileTypes = [".pdf", ".docx", ".md", ".txt"],
-  className,
+  acceptedFileTypes = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/markdown", "text/plain"],
 }: FileUploaderProps) {
-  const [files, setFiles] = useState<UploadedFile[]>([])
-  const [isUploading, setIsUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [fileProgress, setFileProgress] = useState<Record<string, number>>({})
+  const [isDragActive, setIsDragActive] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const onDrop = useCallback(
+  const handleFileUpload = useCallback(
     async (acceptedFiles: File[]) => {
-      if (acceptedFiles.length === 0) return
-
-      if (files.length + acceptedFiles.length > maxFiles) {
+      if (uploadedFiles.length + acceptedFiles.length > maxFiles) {
         toast({
           title: "Too many files",
-          description: `You can upload a maximum of ${maxFiles} files.`,
+          description: `You can only upload a maximum of ${maxFiles} files.`,
           variant: "destructive",
         })
         return
       }
 
-      setIsUploading(true)
+      setUploading(true)
 
-      // Simulate uploading files with progress
+      // Simulate file upload with progress
       const newFiles: UploadedFile[] = []
-      const newProgress: Record<string, number> = {}
+      const newProgress: Record<string, number> = { ...fileProgress }
 
       for (const file of acceptedFiles) {
-        const id = uuidv4()
-        newProgress[id] = 0
-        setUploadProgress((prev) => ({ ...prev, [id]: 0 }))
+        const fileId = uuidv4()
+        newProgress[fileId] = 0
+        setFileProgress(newProgress)
 
-        // Simulate file upload progress
+        // Simulate upload progress
         const simulateProgress = () => {
-          let progress = 0
-          const interval = setInterval(() => {
-            progress += Math.floor(Math.random() * 15) + 5
-            if (progress > 100) progress = 100
-            setUploadProgress((prev) => ({ ...prev, [id]: progress }))
-            if (progress === 100) clearInterval(interval)
-          }, 300)
-          return interval
+          return new Promise<void>((resolve) => {
+            let progress = 0
+            const interval = setInterval(() => {
+              progress += Math.random() * 10
+              if (progress > 100) progress = 100
+
+              setFileProgress((prev) => ({
+                ...prev,
+                [fileId]: progress,
+              }))
+
+              if (progress === 100) {
+                clearInterval(interval)
+                resolve()
+              }
+            }, 200)
+          })
         }
 
-        const interval = simulateProgress()
+        await simulateProgress()
 
-        // Simulate API call to upload file
-        await new Promise<void>((resolve) => setTimeout(() => {
-          clearInterval(interval)
-          setUploadProgress((prev) => ({ ...prev, [id]: 100 }))
-          
-          newFiles.push({
-            id,
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            url: URL.createObjectURL(file), // In a real app, this would be the server URL
-          })
-          
-          resolve()
-        }, 2000))
+        // Create uploaded file object
+        const uploadedFile: UploadedFile = {
+          id: fileId,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          url: URL.createObjectURL(file),
+        }
+
+        newFiles.push(uploadedFile)
       }
 
-      setFiles((prevFiles) => [...prevFiles, ...newFiles])
-      onFilesUploaded([...files, ...newFiles])
-      setIsUploading(false)
-
-      toast({
-        title: "Files uploaded",
-        description: `Successfully uploaded ${newFiles.length} file(s).`,
-      })
+      setUploadedFiles((prev) => [...prev, ...newFiles])
+      onFilesUploaded(newFiles)
+      setUploading(false)
     },
-    [files, maxFiles, onFilesUploaded]
+    [uploadedFiles, maxFiles, fileProgress, onFilesUploaded],
   )
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      handleFileUpload(acceptedFiles)
+      setIsDragActive(false)
+    },
+    [handleFileUpload],
+  )
+
+  const { getRootProps, getInputProps, isDragReject } = useDropzone({
     onDrop,
     accept: {
-      'application/pdf': acceptedFileTypes.includes('.pdf') ? ['.pdf'] : [],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 
-        acceptedFileTypes.includes('.docx') ? ['.docx'] : [],
-      'text/markdown': acceptedFileTypes.includes('.md') ? ['.md'] : [],
-      'text/plain': acceptedFileTypes.includes('.txt') ? ['.txt'] : [],
+      'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'text/markdown': ['.md'],
+      'text/plain': ['.txt']
     },
     maxFiles,
-    disabled: isUploading,
+    onDragEnter: () => setIsDragActive(true),
+    onDragLeave: () => setIsDragActive(false),
   })
 
   const handleRemoveFile = (id: string) => {
-    setFiles((prevFiles) => {
-      const updatedFiles = prevFiles.filter((file) => file.id !== id)
-      onFilesUploaded(updatedFiles)
-      return updatedFiles
-    })
+    setUploadedFiles((prev) => prev.filter((file) => file.id !== id))
+    // Note: In a real app, you would also need to notify the parent component
   }
 
   const getFileIcon = (fileType: string) => {
-    if (fileType.includes("pdf")) return <FileText className="h-5 w-5 text-red-500" />
-    if (fileType.includes("word") || fileType.includes("docx")) return <FileText className="h-5 w-5 text-blue-500" />
-    if (fileType.includes("markdown") || fileType.includes("md")) return <FileText className="h-5 w-5 text-purple-500" />
-    return <File className="h-5 w-5 text-gray-500" />
-  }
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes"
-    const k = 1024
-    const sizes = ["Bytes", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+    if (fileType.includes("pdf")) return <FileText className="h-6 w-6 text-red-500" />
+    if (fileType.includes("image")) return <FileImage className="h-6 w-6 text-blue-500" />
+    if (fileType.includes("zip") || fileType.includes("archive"))
+      return <FileArchive className="h-6 w-6 text-yellow-500" />
+    if (fileType.includes("word") || fileType.includes("document"))
+      return <FileText className="h-6 w-6 text-blue-500" />
+    return <File className="h-6 w-6 text-gray-500" />
   }
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className="space-y-6">
       <div
         {...getRootProps()}
-        className={cn(
-          "flex flex-col items-center justify-center w-full p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
-          isDragActive
-            ? "border-primary bg-primary/5"
-            : "border-muted-foreground/30 hover:border-primary/50 hover:bg-muted/50",
-          isUploading && "pointer-events-none opacity-60"
-        )}
+        className={`
+          border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all
+          ${isDragActive ? "border-primary bg-primary/5 animate-pulse" : "border-muted-foreground/20"}
+          ${isDragReject ? "border-destructive bg-destructive/5" : ""}
+          hover:border-primary/60 hover:bg-primary/5
+        `}
+        onClick={() => fileInputRef.current?.click()}
       >
-        <input {...getInputProps()} aria-label="File uploader" />
-        <Upload className="h-10 w-10 text-muted-foreground mb-4" />
-        <p className="text-lg font-medium mb-1">Drag & drop files here</p>
-        <p className="text-sm text-muted-foreground mb-4">
-          or click to browse (max {maxFiles} files)
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Supported formats: {acceptedFileTypes.join(", ")}
-        </p>
+        <input {...getInputProps()} ref={fileInputRef} />
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <div className="p-3 bg-primary/10 rounded-full">
+            <Upload className="h-8 w-8 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-medium">Drag & drop files here</h3>
+            <p className="text-sm text-muted-foreground">
+              or <span className="text-primary font-medium">browse</span> to upload
+            </p>
+          </div>
+          <div className="text-xs text-muted-foreground">Accepted file types: {acceptedFileTypes.join(", ")}</div>
+        </div>
       </div>
 
-      {files.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-lg font-medium mb-3">Uploaded Files ({files.length})</h3>
-          <div className="space-y-3">
-            {files.map((file) => (
+      {uploadedFiles.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">
+            Uploaded Files ({uploadedFiles.length}/{maxFiles})
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {uploadedFiles.map((file) => (
               <Card key={file.id} className="overflow-hidden">
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {getFileIcon(file.type)}
-                      <div>
-                        <p className="font-medium truncate max-w-[200px] sm:max-w-md">{file.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                <CardContent className="p-4 flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    {fileProgress[file.id] < 100 ? (
+                      <RadialProgress progress={fileProgress[file.id] || 0} />
+                    ) : (
+                      getFileIcon(file.type)
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start">
+                      <div className="truncate pr-2">
+                        <p className="text-sm font-medium truncate">{file.name}</p>
+                        <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {uploadProgress[file.id] < 100 ? (
-                        <div className="flex items-center gap-2 w-[100px]">
-                          <Progress value={uploadProgress[file.id]} className="h-2" />
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">{uploadProgress[file.id]}%</span>
-                        </div>
-                      ) : (
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                      )}
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
                         onClick={() => handleRemoveFile(file.id)}
-                        aria-label={`Remove ${file.name}`}
                       >
                         <X className="h-4 w-4" />
+                        <span className="sr-only">Remove file</span>
                       </Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
+            {uploadedFiles.length < maxFiles && (
+              <Card
+                className="overflow-hidden border-dashed cursor-pointer hover:border-primary/60 hover:bg-primary/5"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <CardContent className="p-4 flex items-center justify-center h-full">
+                  <div className="flex flex-col items-center space-y-2 text-muted-foreground">
+                    <FilePlus className="h-6 w-6" />
+                    <span className="text-sm">Add more files</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
-        </div>
-      )}
-
-      {isUploading && files.length === 0 && (
-        <div className="mt-4 flex items-center justify-center">
-          <AlertCircle className="h-5 w-5 text-muted-foreground mr-2" />
-          <p className="text-sm text-muted-foreground">Uploading files...</p>
         </div>
       )}
     </div>

@@ -11,7 +11,6 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 export const metadata: Metadata = {
   title: "Leidos Upskilling Hub",
   description: "Internal platform for creating and managing learning experiences",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({

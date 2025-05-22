@@ -1,573 +1,476 @@
 "use client"
 
-import { useState, useRef } from "react"
-import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, KeyboardSensor } from "@dnd-kit/core"
-import { SortableContext, horizontalListSortingStrategy, arrayMove, useSortable } from "@dnd-kit/sortable"
-import { restrictToWindowEdges } from "@dnd-kit/modifiers"
-import { Edit, Plus, X, Grip, Video, FileQuestion, BookOpen, MessageSquare, Play, Info, Loader2 } from "lucide-react"
+import React from "react"
+
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import type { Module, LearningObject } from "@/store/courseWizardStore"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable"
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
+import { v4 as uuidv4 } from "uuid"
+import {
+  Plus,
+  Loader2,
+  Video,
+  FileQuestion,
+  MessageSquare,
+  BookOpen,
+  Lightbulb,
+  GripVertical,
+  Pencil,
+  Trash2,
+} from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { toast } from "@/components/ui/use-toast"
-import { cn } from "@/lib/utils"
-import { LearningObject, Module } from "@/store/courseWizardStore"
-import { v4 as uuidv4 } from "uuid"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import { SortableItem } from "./ui/sortable-item"
 
 interface StoryboardEditorProps {
   modules: Module[]
   learningObjects: LearningObject[]
   onLearningObjectsChange: (objects: LearningObject[]) => void
-  isLoading?: boolean
+  isLoading: boolean
+}
+
+type LearningObjectType = "video" | "quiz" | "reflection" | "scenario" | "reading"
+
+const objectTypeIcons = {
+  video: Video,
+  quiz: FileQuestion,
+  reflection: MessageSquare,
+  reading: BookOpen,
+  scenario: Lightbulb,
+}
+
+const objectTypeColors = {
+  video: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+  quiz: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
+  reflection: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
+  reading: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  scenario: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
 }
 
 export function StoryboardEditor({
   modules,
   learningObjects,
   onLearningObjectsChange,
-  isLoading = false,
+  isLoading,
 }: StoryboardEditorProps) {
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [currentLearningObject, setCurrentLearningObject] = useState<LearningObject | null>(null)
-  const [isCreatingNew, setIsCreatingNew] = useState(false)
-  
-  // Create a reference to the container
-  const containerRef = useRef<HTMLDivElement>(null)
-  
-  // Configure sensors for keyboard and pointer
+  const [editingObject, setEditingObject] = useState<LearningObject | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [newObjectType, setNewObjectType] = useState<LearningObjectType>("video")
+  const [newObjectTitle, setNewObjectTitle] = useState("")
+  const [newObjectDescription, setNewObjectDescription] = useState("")
+  const [newObjectModuleId, setNewObjectModuleId] = useState("")
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false)
+
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     }),
-    useSensor(KeyboardSensor)
   )
-  
-  const handleDragStart = (event: any) => {
-    setActiveId(event.active.id)
-  }
-  
-  const handleDragEnd = (event: any) => {
+
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    
+
     if (over && active.id !== over.id) {
       const activeObject = learningObjects.find((obj) => obj.id === active.id)
       const overObject = learningObjects.find((obj) => obj.id === over.id)
-      
+
       if (activeObject && overObject) {
-        // If moving within the same module
-        if (activeObject.moduleId === overObject.moduleId) {
-          const oldIndex = learningObjects.findIndex((obj) => obj.id === active.id)
-          const newIndex = learningObjects.findIndex((obj) => obj.id === over.id)
-          
-          const newLearningObjects = arrayMove(learningObjects, oldIndex, newIndex)
-          
-          // Update positions
-          const updatedObjects = newLearningObjects.map((obj, index) => {
-            if (obj.moduleId === activeObject.moduleId) {
-              const moduleObjects = newLearningObjects.filter(o => o.moduleId === obj.moduleId)
-              const moduleIndex = moduleObjects.findIndex(o => o.id === obj.id)
-              return { ...obj, position: moduleIndex }
-            }
-            return obj
-          })
-          
-          onLearningObjectsChange(updatedObjects)
-        } else {
-          // If moving to a different module
-          const newObjects = learningObjects.map(obj => {
-            if (obj.id === active.id) {
-              return { ...obj, moduleId: overObject.moduleId }
-            }
-            return obj
-          })
-          
-          // Recalculate positions for both modules
-          const sourceModuleId = activeObject.moduleId
-          const targetModuleId = overObject.moduleId
-          
-          const updatedObjects = newObjects.map(obj => {
-            if (obj.moduleId === sourceModuleId || obj.moduleId === targetModuleId) {
-              const moduleObjects = newObjects.filter(o => o.moduleId === obj.moduleId)
-              const moduleIndex = moduleObjects.findIndex(o => o.id === obj.id)
-              return { ...obj, position: moduleIndex }
-            }
-            return obj
-          })
-          
-          onLearningObjectsChange(updatedObjects)
+        // Get all objects in the same module as the over object
+        const moduleObjects = learningObjects.filter((obj) => obj.moduleId === overObject.moduleId)
+
+        // Find the indices
+        const activeIndex = moduleObjects.findIndex((obj) => obj.id === active.id)
+        const overIndex = moduleObjects.findIndex((obj) => obj.id === over.id)
+
+        // Create a new array with the updated positions
+        const updatedObjects = [...learningObjects]
+
+        // Update the module ID if it's different
+        if (activeObject.moduleId !== overObject.moduleId) {
+          const objIndex = updatedObjects.findIndex((obj) => obj.id === active.id)
+          updatedObjects[objIndex] = {
+            ...updatedObjects[objIndex],
+            moduleId: overObject.moduleId,
+          }
         }
+
+        // Update positions
+        updatedObjects.forEach((obj) => {
+          if (obj.moduleId === overObject.moduleId) {
+            const currentIndex = moduleObjects.findIndex((o) => o.id === obj.id)
+            let newPosition = obj.position
+
+            if (currentIndex === activeIndex) {
+              // This is the dragged item, set its position to the target position
+              newPosition = overObject.position
+            } else if (
+              (activeIndex < overIndex && currentIndex > activeIndex && currentIndex <= overIndex) ||
+              (activeIndex > overIndex && currentIndex < activeIndex && currentIndex >= overIndex)
+            ) {
+              // Adjust positions of items between the source and target
+              newPosition = activeIndex < overIndex ? obj.position - 1 : obj.position + 1
+            }
+
+            const objIndex = updatedObjects.findIndex((o) => o.id === obj.id)
+            if (objIndex !== -1) {
+              updatedObjects[objIndex] = { ...updatedObjects[objIndex], position: newPosition }
+            }
+          }
+        })
+
+        onLearningObjectsChange(updatedObjects)
       }
     }
-    
-    setActiveId(null)
   }
-  
-  const handleAddLearningObject = (moduleId: string) => {
-    setCurrentLearningObject({
-      id: "",
-      type: "video",
-      title: "",
-      description: "",
-      moduleId,
-      position: learningObjects.filter(obj => obj.moduleId === moduleId).length,
-    })
-    setIsCreatingNew(true)
-    setEditDialogOpen(true)
-  }
-  
-  const handleEditLearningObject = (learningObject: LearningObject) => {
-    setCurrentLearningObject(learningObject)
-    setIsCreatingNew(false)
-    setEditDialogOpen(true)
-  }
-  
-  const handleSaveLearningObject = (formData: any) => {
-    if (isCreatingNew) {
-      const newObject: LearningObject = {
-        ...formData,
-        id: uuidv4(),
-      }
-      
-      onLearningObjectsChange([...learningObjects, newObject])
-      
-      toast({
-        title: "Learning object added",
-        description: "The learning object has been added successfully.",
-      })
-    } else if (currentLearningObject) {
-      onLearningObjectsChange(
-        learningObjects.map(obj => 
-          obj.id === currentLearningObject.id ? { ...obj, ...formData } : obj
-        )
-      )
-      
-      toast({
-        title: "Learning object updated",
-        description: "The learning object has been updated successfully.",
-      })
+
+  const handleAddObject = () => {
+    if (!newObjectTitle.trim() || !newObjectModuleId) return
+
+    const moduleObjects = learningObjects.filter((obj) => obj.moduleId === newObjectModuleId)
+
+    // Find the highest position in the module
+    const highestPosition = moduleObjects.length > 0 ? Math.max(...moduleObjects.map((obj) => obj.position)) : -1
+
+    const newObject: LearningObject = {
+      id: uuidv4(),
+      type: newObjectType,
+      title: newObjectTitle,
+      description: newObjectDescription,
+      moduleId: newObjectModuleId,
+      position: highestPosition + 1,
     }
-    
-    setEditDialogOpen(false)
-    setCurrentLearningObject(null)
-    setIsCreatingNew(false)
+
+    onLearningObjectsChange([...learningObjects, newObject])
+    resetForm()
+    setIsDialogOpen(false)
+    setIsAddMenuOpen(false)
   }
-  
-  const handleDeleteLearningObject = (id: string) => {
-    // Filter out the deleted object
-    const newObjects = learningObjects.filter(obj => obj.id !== id)
-    
-    // Get the module ID of the deleted object
-    const deletedObject = learningObjects.find(obj => obj.id === id)
-    if (!deletedObject) return
-    
-    // Recalculate positions for the module
-    const moduleId = deletedObject.moduleId
-    const updatedObjects = newObjects.map(obj => {
-      if (obj.moduleId === moduleId) {
-        const moduleObjects = newObjects.filter(o => o.moduleId === moduleId)
-        const moduleIndex = moduleObjects.findIndex(o => o.id === obj.id)
-        return { ...obj, position: moduleIndex }
-      }
-      return obj
-    })
-    
+
+  const handleUpdateObject = () => {
+    if (!editingObject || !editingObject.title.trim()) return
+
+    const updatedObjects = learningObjects.map((obj) => (obj.id === editingObject.id ? editingObject : obj))
+
     onLearningObjectsChange(updatedObjects)
-    
-    toast({
-      title: "Learning object deleted",
-      description: "The learning object has been deleted successfully.",
-    })
+    setEditingObject(null)
+    setIsDialogOpen(false)
   }
-  
+
+  const handleRemoveObject = (id: string) => {
+    onLearningObjectsChange(learningObjects.filter((obj) => obj.id !== id))
+  }
+
+  const resetForm = () => {
+    setNewObjectType("video")
+    setNewObjectTitle("")
+    setNewObjectDescription("")
+    setNewObjectModuleId("")
+  }
+
+  const openEditDialog = (object: LearningObject) => {
+    setEditingObject({ ...object })
+    setIsDialogOpen(true)
+  }
+
+  const openAddDialog = (type: LearningObjectType) => {
+    setNewObjectType(type)
+    setIsDialogOpen(true)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+        <h3 className="text-lg font-medium">Loading Storyboard</h3>
+        <p className="text-muted-foreground mt-2">We're preparing your storyboard editor...</p>
+      </div>
+    )
+  }
+
   // Group learning objects by module
-  const getModuleLearningObjects = (moduleId: string) => {
-    return learningObjects
-      .filter(obj => obj.moduleId === moduleId)
+  const objectsByModule: Record<string, LearningObject[]> = {}
+
+  modules.forEach((module) => {
+    objectsByModule[module.id] = learningObjects
+      .filter((obj) => obj.moduleId === module.id)
       .sort((a, b) => a.position - b.position)
-  }
-  
-  const getLearningObjectIcon = (type: string) => {
-    switch (type) {
-      case "video":
-        return <Video className="h-5 w-5" />
-      case "quiz":
-        return <FileQuestion className="h-5 w-5" />
-      case "reading":
-        return <BookOpen className="h-5 w-5" />
-      case "reflection":
-        return <MessageSquare className="h-5 w-5" />
-      case "scenario":
-        return <Play className="h-5 w-5" />
-      default:
-        return <Video className="h-5 w-5" />
-    }
-  }
-  
-  const getLearningObjectTypeLabel = (type: string) => {
-    switch (type) {
-      case "video":
-        return "Video"
-      case "quiz":
-        return "Quiz"
-      case "reading":
-        return "Reading"
-      case "reflection":
-        return "Reflection"
-      case "scenario":
-        return "Scenario"
-      default:
-        return "Content"
-    }
-  }
-  
-  // Draggable learning object component
-  function SortableLearningObject({ 
-    learningObject,
-    onEdit,
-    onDelete,
-  }: { 
-    learningObject: LearningObject
-    onEdit: (learningObject: LearningObject) => void
-    onDelete: (id: string) => void
-  }) {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id: learningObject.id })
-    
-    const style = {
-      transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-      transition,
-      opacity: isDragging ? 0.4 : 1,
-    }
-    
-    return (
-      <Card 
-        ref={setNodeRef} 
-        style={style} 
-        className={cn(
-          "mb-3",
-          isDragging && "ring-2 ring-primary"
-        )}
-      >
-        <CardContent className="p-3">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              <div {...attributes} {...listeners} className="cursor-grab mt-1">
-                <Grip className="h-4 w-4 text-muted-foreground" />
-              </div>
-              
-              <div>
-                <div className="flex items-center gap-1.5 mb-1">
-                  {getLearningObjectIcon(learningObject.type)}
-                  <span className="text-xs font-medium bg-muted px-1.5 py-0.5 rounded">
-                    {getLearningObjectTypeLabel(learningObject.type)}
-                  </span>
-                </div>
-                
-                <h4 className="font-medium text-sm">{learningObject.title}</h4>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                  {learningObject.description}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-1 ml-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => onEdit(learningObject)}
-                aria-label={`Edit ${learningObject.title}`}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => onDelete(learningObject.id)}
-                aria-label={`Delete ${learningObject.title}`}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-  
-  // Rendered component for drag overlay
-  function DragOverlayContent({ id }: { id: string }) {
-    const learningObject = learningObjects.find(obj => obj.id === id)
-    
-    if (!learningObject) return null
-    
-    return (
-      <Card className="w-full max-w-[320px] opacity-80">
-        <CardContent className="p-3">
-          <div className="flex items-start gap-3">
-            <div className="mt-1">
-              <Grip className="h-4 w-4 text-muted-foreground" />
-            </div>
-            
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                {getLearningObjectIcon(learningObject.type)}
-                <span className="text-xs font-medium bg-muted px-1.5 py-0.5 rounded">
-                  {getLearningObjectTypeLabel(learningObject.type)}
-                </span>
-              </div>
-              
-              <h4 className="font-medium text-sm">{learningObject.title}</h4>
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                {learningObject.description}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-  
-  // Form for editing/creating learning objects
-  function LearningObjectForm({
-    learningObject,
-    onSave,
-    onCancel,
-  }: {
-    learningObject: LearningObject
-    onSave: (formData: any) => void
-    onCancel: () => void
-  }) {
-    const [formData, setFormData] = useState({
-      type: learningObject.type,
-      title: learningObject.title,
-      description: learningObject.description,
-      moduleId: learningObject.moduleId,
-      position: learningObject.position,
-    })
-    
-    const handleChange = (field: string, value: string) => {
-      setFormData(prev => ({ ...prev, [field]: value }))
-    }
-    
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault()
-      onSave(formData)
-    }
-    
-    return (
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <label htmlFor="type" className="text-sm font-medium">
-            Object Type
-          </label>
-          <Select
-            value={formData.type}
-            onValueChange={(value) => handleChange("type", value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select object type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="video">Video</SelectItem>
-              <SelectItem value="quiz">Quiz</SelectItem>
-              <SelectItem value="reading">Reading</SelectItem>
-              <SelectItem value="reflection">Reflection Exercise</SelectItem>
-              <SelectItem value="scenario">Interactive Scenario</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="space-y-2">
-          <label htmlFor="title" className="text-sm font-medium">
-            Title
-          </label>
-          <Input
-            id="title"
-            value={formData.title}
-            onChange={(e) => handleChange("title", e.target.value)}
-            placeholder="Enter a title"
-            required
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <label htmlFor="description" className="text-sm font-medium">
-            Description
-          </label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => handleChange("description", e.target.value)}
-            placeholder="Enter a description"
-            className="min-h-[100px]"
-            required
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <label htmlFor="module" className="text-sm font-medium">
-            Module
-          </label>
-          <Select
-            value={formData.moduleId}
-            onValueChange={(value) => handleChange("moduleId", value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select module" />
-            </SelectTrigger>
-            <SelectContent>
-              {modules.map((module) => (
-                <SelectItem key={module.id} value={module.id}>
-                  {module.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button type="submit">Save</Button>
-        </DialogFooter>
-      </form>
-    )
-  }
-  
-  // This is what actually renders on the page
+  })
+
   return (
-    <div className="space-y-6" ref={containerRef}>
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-          <h3 className="text-xl font-medium">Creating storyboard...</h3>
-          <p className="text-muted-foreground mt-2">
-            Our AI is organizing your course content into a structured storyboard.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-medium">Course Storyboard</h2>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Info className="h-4 w-4" />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Storyboard Editor</h2>
+
+        <div className="flex space-x-2">
+          <Sheet open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
+            <SheetTrigger asChild>
+              <Button className="bg-[#582873] hover:bg-[#582873]/90">
+                <Plus className="h-4 w-4 mr-1" />
+                Add Content
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="h-auto max-h-[300px]">
+              <SheetHeader>
+                <SheetTitle>Add Learning Content</SheetTitle>
+                <SheetDescription>Select the type of learning content you want to add to your course.</SheetDescription>
+              </SheetHeader>
+
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 py-6">
+                {Object.entries(objectTypeIcons).map(([type, Icon]) => (
+                  <Button
+                    key={type}
+                    variant="outline"
+                    className="h-auto flex flex-col items-center justify-center p-4 gap-2"
+                    onClick={() => {
+                      openAddDialog(type as LearningObjectType)
+                    }}
+                  >
+                    <div className={`p-2 rounded-full ${objectTypeColors[type as LearningObjectType]}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className="text-sm capitalize">{type}</span>
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>Drag and drop learning objects to arrange your course content. Each column represents a module. Click on a learning object to edit its details.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          
-          <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            modifiers={[restrictToWindowEdges]}
-          >
-            <div 
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-              aria-label="Course storyboard"
-            >
-              {modules.map((module) => {
-                const moduleObjects = getModuleLearningObjects(module.id)
-                
-                return (
-                  <Card key={module.id} className="overflow-hidden">
-                    <CardHeader className="bg-muted/50 py-3">
-                      <CardTitle className="text-base">{module.title}</CardTitle>
-                    </CardHeader>
-                    
-                    <CardContent className="p-3">
-                      <SortableContext
-                        items={moduleObjects.map(obj => obj.id)}
-                        strategy={horizontalListSortingStrategy}
-                      >
-                        <div className="min-h-[120px]">
-                          {moduleObjects.length === 0 ? (
-                            <p className="text-xs text-muted-foreground text-center py-4">
-                              No learning objects in this module.
-                            </p>
-                          ) : (
-                            moduleObjects.map((obj) => (
-                              <SortableLearningObject
-                                key={obj.id}
-                                learningObject={obj}
-                                onEdit={handleEditLearningObject}
-                                onDelete={handleDeleteLearningObject}
-                              />
-                            ))
-                          )}
-                        </div>
-                      </SortableContext>
-                    </CardContent>
-                    
-                    <CardFooter className="p-3 pt-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => handleAddLearningObject(module.id)}
-                      >
-                        <Plus className="h-3.5 w-3.5 mr-1.5" />
-                        Add Learning Object
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                )
-              })}
-            </div>
-            
-            <DragOverlay modifiers={[restrictToWindowEdges]}>
-              {activeId ? <DragOverlayContent id={activeId} /> : null}
-            </DragOverlay>
-          </DndContext>
+                ))}
+              </div>
+
+              <SheetFooter>
+                <Button variant="outline" onClick={() => setIsAddMenuOpen(false)}>
+                  Cancel
+                </Button>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
         </div>
-      )}
-      
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-x-auto pb-4">
+        {modules.map((module) => (
+          <Card key={module.id} className="min-w-[300px]">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">{module.title}</CardTitle>
+            </CardHeader>
+            <Separator />
+            <CardContent className="pt-4">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+                modifiers={[restrictToVerticalAxis]}
+              >
+                <SortableContext items={objectsByModule[module.id] || []} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-2">
+                    {objectsByModule[module.id]?.length ? (
+                      objectsByModule[module.id].map((object) => {
+                        const Icon = objectTypeIcons[object.type]
+
+                        return (
+                          <SortableItem key={object.id} id={object.id}>
+                            <div className="flex items-start border rounded-md p-3 bg-card group hover:border-primary/40 transition-colors">
+                              <div className="flex-shrink-0 mr-3 mt-1 cursor-grab">
+                                <GripVertical className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                              <div
+                                className={`flex-shrink-0 w-8 h-8 rounded-full ${objectTypeColors[object.type]} flex items-center justify-center mr-3`}
+                              >
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-medium truncate">{object.title}</h4>
+                                <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{object.description}</p>
+                              </div>
+                              <div className="flex-shrink-0 ml-2 flex space-x-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openEditDialog(object)}
+                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  <span className="sr-only">Edit</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemoveObject(object.id)}
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <span className="sr-only">Delete</span>
+                                </Button>
+                              </div>
+                            </div>
+                          </SortableItem>
+                        )
+                      })
+                    ) : (
+                      <div className="text-center py-6 border border-dashed rounded-md">
+                        <p className="text-sm text-muted-foreground mb-2">No content in this module</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setNewObjectModuleId(module.id)
+                            setIsAddMenuOpen(true)
+                          }}
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          Add Content
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </SortableContext>
+              </DndContext>
+
+              {objectsByModule[module.id]?.length > 0 && (
+                <Button
+                  variant="ghost"
+                  className="w-full mt-3 border border-dashed text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setNewObjectModuleId(module.id)
+                    setIsAddMenuOpen(true)
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Content
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>
-              {isCreatingNew ? "Add Learning Object" : "Edit Learning Object"}
-            </DialogTitle>
+            <DialogTitle>{editingObject ? "Edit Learning Object" : "Add Learning Object"}</DialogTitle>
             <DialogDescription>
-              {isCreatingNew
-                ? "Create a new learning object for your course."
-                : "Edit the details of this learning object."}
+              {editingObject
+                ? "Update the details of this learning object."
+                : "Create a new learning object for your course."}
             </DialogDescription>
           </DialogHeader>
-          
-          {currentLearningObject && (
-            <LearningObjectForm
-              learningObject={currentLearningObject}
-              onSave={handleSaveLearningObject}
-              onCancel={() => {
-                setEditDialogOpen(false)
-                setCurrentLearningObject(null)
-                setIsCreatingNew(false)
+
+          <div className="space-y-4 py-4">
+            {!editingObject && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Module</label>
+                <Select value={newObjectModuleId} onValueChange={setNewObjectModuleId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a module" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {modules.map((module) => (
+                      <SelectItem key={module.id} value={module.id}>
+                        {module.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {!editingObject && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Content Type</label>
+                <Select value={newObjectType} onValueChange={(value) => setNewObjectType(value as LearningObjectType)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(objectTypeIcons).map((type) => (
+                      <SelectItem key={type} value={type}>
+                        <div className="flex items-center">
+                          {React.createElement(objectTypeIcons[type as LearningObjectType], {
+                            className: "h-4 w-4 mr-2",
+                          })}
+                          <span className="capitalize">{type}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Title</label>
+              <Input
+                value={editingObject ? editingObject.title : newObjectTitle}
+                onChange={(e) =>
+                  editingObject
+                    ? setEditingObject({ ...editingObject, title: e.target.value })
+                    : setNewObjectTitle(e.target.value)
+                }
+                placeholder="Enter a title"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <Textarea
+                value={editingObject ? editingObject.description : newObjectDescription}
+                onChange={(e) =>
+                  editingObject
+                    ? setEditingObject({ ...editingObject, description: e.target.value })
+                    : setNewObjectDescription(e.target.value)
+                }
+                placeholder="Enter a description"
+                rows={4}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDialogOpen(false)
+                setEditingObject(null)
+                resetForm()
               }}
-            />
-          )}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={editingObject ? handleUpdateObject : handleAddObject}
+              className="bg-[#582873] hover:bg-[#582873]/90"
+            >
+              {editingObject ? "Update" : "Add"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

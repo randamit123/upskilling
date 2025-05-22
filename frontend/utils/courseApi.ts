@@ -1,4 +1,4 @@
-import { UploadedFile, Module, LearningObjective, Skill, LearningObject } from "@/store/courseWizardStore"
+import { UploadedFile, Module, LearningObjective, Skill, LearningObject, ComprehensivenessLevel, CourseLength, SkillLevel } from "@/store/courseWizardStore"
 
 // Mock data for testing
 const mockModules: Module[] = [
@@ -103,15 +103,44 @@ const mockSkills: Skill[] = [
  * @returns Promise that resolves when upload is complete
  */
 export async function uploadContent(files: UploadedFile[]): Promise<void> {
-  console.log('Uploading files:', files)
+  console.log('Uploading files:', files.length, 'files')
   
-  // Simulate API call with delay
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      console.log('Files uploaded successfully')
-      resolve()
-    }, 2000)
+  if (files.length === 0) {
+    console.error('No files to upload')
+    return Promise.resolve()
+  }
+
+  // For each file, create a form data and upload
+  // This is a real implementation that you would use with a real backend
+  const uploadPromises = files.map(async (file) => {
+    // In a real implementation, you would use fetch or axios to upload the file
+    // For now, we'll simulate the upload with a delay
+    return new Promise<void>((resolve, reject) => {
+      // Simulate network delay and success/failure
+      const delay = Math.random() * 1000 + 1000 // 1-2 second delay
+      setTimeout(() => {
+        // 95% success rate
+        if (Math.random() > 0.05) {
+          console.log(`File uploaded successfully: ${file.name}`)
+          resolve()
+        } else {
+          console.error(`File upload failed: ${file.name}`)
+          reject(new Error(`Failed to upload file: ${file.name}`))
+        }
+      }, delay)
+    })
   })
+
+  try {
+    // Wait for all uploads to complete
+    await Promise.all(uploadPromises)
+    console.log('All files uploaded successfully')
+    return Promise.resolve()
+  } catch (error) {
+    console.error('Some files failed to upload:', error)
+    // Even if some files fail, we'll continue with what we have
+    return Promise.resolve()
+  }
 }
 
 /**
@@ -179,6 +208,63 @@ export async function saveStoryboard(data: {
       console.log('Storyboard saved successfully')
       resolve()
     }, 1500)
+  })
+}
+
+/**
+ * Generates a complete detailed course with all lectures and materials based on the provided metadata and outline
+ * @param data Course metadata and outline information
+ * @returns Promise that resolves when course generation is complete
+ */
+export async function generateCourse(data: {
+  courseTitle: string
+  courseSummary: string
+  customPrompt: string
+  comprehensivenessLevel: ComprehensivenessLevel
+  courseLength: CourseLength
+  skillLevel: SkillLevel
+  modules: Module[]
+  learningObjectives: LearningObjective[]
+  skills: Skill[]
+}): Promise<void> {
+  console.log('Generating detailed course for:', data.courseTitle)
+  console.log('Using parameters:', {
+    comprehensiveness: data.comprehensivenessLevel,
+    length: data.courseLength,
+    skillLevel: data.skillLevel
+  })
+  
+  // In a real implementation, this would call a backend API that processes the prompt
+  // and uses LangChain with the local LLaMA model to generate course content
+  
+  // Simulate API call with delay to represent LLM processing time
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log('Course generation completed successfully')
+      resolve()
+    }, 3000)
+  })
+}
+
+/**
+ * Generates interactive elements for the storyboard
+ * @param data Learning objects to enhance with interactive elements
+ * @returns Promise that resolves when generation is complete
+ */
+export async function generateInteractiveElements(data: {
+  learningObjects: LearningObject[]
+}): Promise<void> {
+  console.log('Generating interactive elements for', data.learningObjects.length, 'learning objects')
+  
+  // In a real implementation, this would use LangChain to create quizzes, discussions, etc.
+  // based on the learning objects and course content
+  
+  // Simulate API call with delay
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log('Interactive elements generated successfully')
+      resolve()
+    }, 2500)
   })
 }
 

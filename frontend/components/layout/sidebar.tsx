@@ -297,18 +297,30 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <HelpCircle className="mr-2 h-4 w-4" />
-                <span>Help</span>
-              </DropdownMenuItem>
+              <Link href="/profile" passHref legacyBehavior>
+                <DropdownMenuItem asChild>
+                  <a className="w-full cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </a>
+                </DropdownMenuItem>
+              </Link>
+              <Link href="/settings" passHref legacyBehavior>
+                <DropdownMenuItem asChild>
+                  <a className="w-full cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </a>
+                </DropdownMenuItem>
+              </Link>
+              <Link href="/help" passHref legacyBehavior>
+                <DropdownMenuItem asChild>
+                  <a className="w-full cursor-pointer">
+                    <HelpCircle className="mr-2 h-4 w-4" />
+                    <span>Help</span>
+                  </a>
+                </DropdownMenuItem>
+              </Link>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <LogOut className="mr-2 h-4 w-4" />
