@@ -14,17 +14,26 @@ interface ProtectedRouteProps {
  */
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const router = useRouter();
-  const { user, isLoading } = useAuthStore();
+  const { user, isLoading, isInitialized, session } = useAuthStore();
 
   useEffect(() => {
-    // Don't redirect while the auth state is still loading
-    if (!isLoading && !user) {
+    console.log('ProtectedRoute: Auth state check:', {
+      user: !!user,
+      session: !!session,
+      isLoading,
+      isInitialized,
+      userEmail: user?.email
+    });
+    
+    // Only redirect if auth is fully initialized and user is not authenticated
+    if (isInitialized && !isLoading && !user) {
+      console.log('ProtectedRoute: Redirecting to home (not authenticated)');
       router.replace('/');
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, isInitialized, session, router]);
 
-  // Show nothing while checking authentication
-  if (isLoading) {
+  // Show loading while initializing or checking authentication
+  if (!isInitialized || isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -32,7 +41,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  // If not loading and we have a user, show the protected content
-  // If not loading and no user, the useEffect above will redirect
+  // If auth is initialized and we have a user, show the protected content
+  // If auth is initialized and no user, the useEffect above will redirect
   return user ? <>{children}</> : null;
 };

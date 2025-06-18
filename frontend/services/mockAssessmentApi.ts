@@ -225,52 +225,127 @@ class MockAssessmentApi {
   }
 
   async generateQuestionBank(params: {
-    topic: string;
+    // Legacy support
+    topic?: string;
     count: number;
     difficulty?: 'easy' | 'medium' | 'hard';
     questionTypes?: QuestionType[];
+    // New comprehensive parameters
+    assessmentTitle?: string;
+    assessmentDescription?: string;
+    learningOutcomes?: string;
+    uploadedFile?: File | null;
+    questionMix?: Record<string, number>;
+    questionCounts?: Record<string, number>;
+    assessmentType?: AssessmentType;
+    timeLimit?: number;
   }): Promise<Omit<Question, 'id'>[]> {
     await this.simulateNetworkDelay();
     
-    // Generate mock questions based on parameters
-    const questionTypes = params.questionTypes || ['multiple_choice', 'true_false'];
+    // Use new params if available, fall back to legacy
+    const title = params.assessmentTitle || params.topic || 'Sample Assessment';
     const difficulty = params.difficulty || 'medium';
+    const questionMix = params.questionMix || { multiple_choice: 100 };
+    const questionCounts = params.questionCounts || { multiple_choice: params.count };
     
-    return Array(params.count).fill(0).map((_, i) => {
-      const type = questionTypes[Math.floor(Math.random() * questionTypes.length)];
-      const baseQuestion: Omit<Question, 'id'> = {
-        type,
-        prompt: `Sample question about ${params.topic} (${difficulty} difficulty) #${i + 1}`,
-        points: difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3,
-        explanation: `This is a sample explanation for question #${i + 1}`
-      };
+    const questions: Omit<Question, 'id'>[] = [];
 
-      if (type === 'multiple_choice') {
-        return {
-          ...baseQuestion,
-          options: ['Option A', 'Option B', 'Option C', 'Option D'],
-          answer: 'Option ' + String.fromCharCode(65 + Math.floor(Math.random() * 4))
-        };
-      } else if (type === 'true_false') {
-        return {
-          ...baseQuestion,
-          options: ['True', 'False'],
-          answer: Math.random() > 0.5 ? 'True' : 'False'
-        };
-      } else if (type === 'short_answer') {
-        return {
-          ...baseQuestion,
-          answer: `Sample answer for question #${i + 1}`
-        };
-      } else { // scenario
-        return {
-          ...baseQuestion,
-          prompt: `Scenario: You are in a situation related to ${params.topic}. What would you do?`,
-          options: ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
-          answer: 'Option ' + (Math.floor(Math.random() * 4) + 1)
-        };
+    // Generate questions based on the mix
+    Object.entries(questionCounts).forEach(([type, count]) => {
+      if (count > 0) {
+        for (let i = 0; i < count; i++) {
+          const questionType = type === 'scenario_based' ? 'scenario' : type as QuestionType;
+          const baseQuestion: Omit<Question, 'id'> = {
+            type: questionType,
+            prompt: this.generateQuestionPrompt(type, title, params.learningOutcomes, i + 1),
+            points: difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3,
+            explanation: this.generateExplanation(type, i + 1)
+          };
+
+          if (questionType === 'multiple_choice') {
+            questions.push({
+              ...baseQuestion,
+              options: this.generateMCOptions(type, title),
+              answer: this.generateMCOptions(type, title)[Math.floor(Math.random() * 4)]
+            });
+          } else if (questionType === 'true_false') {
+            questions.push({
+              ...baseQuestion,
+              options: ['True', 'False'],
+              answer: Math.random() > 0.5 ? 'True' : 'False'
+            });
+          } else if (questionType === 'short_answer') {
+            questions.push({
+              ...baseQuestion,
+              answer: `Sample answer related to ${title} for question #${i + 1}`
+            });
+          } else if (questionType === 'scenario') {
+            questions.push({
+              ...baseQuestion,
+              options: this.generateScenarioOptions(title),
+              answer: this.generateScenarioOptions(title)[Math.floor(Math.random() * 4)]
+            });
+          }
+        }
       }
     });
+    
+    return questions;
+  }
+
+  private generateQuestionPrompt(type: string, title: string, learningOutcomes?: string, questionNum?: number): string {
+    const outcomeContext = learningOutcomes ? ` (aligned with: ${learningOutcomes.slice(0, 50)}...)` : '';
+    
+    switch (type) {
+      case 'multiple_choice':
+        return `Which of the following best describes a key concept in ${title}${outcomeContext}?`;
+      case 'scenario_based':
+        return `Scenario: You are implementing concepts from ${title}. A colleague approaches you with a problem. How would you apply what you've learned to help them${outcomeContext}?`;
+      case 'reflective':
+        return `Reflect on your understanding of ${title}. How would you explain the main concepts to someone new to this topic${outcomeContext}?`;
+      case 'true_false':
+        return `The principles discussed in ${title} are universally applicable across all contexts${outcomeContext}.`;
+      default:
+        return `Question about ${title}${outcomeContext}`;
+    }
+  }
+
+  private generateMCOptions(type: string, title: string): string[] {
+    switch (type) {
+      case 'multiple_choice':
+        return [
+          `Apply the foundational principles of ${title}`,
+          `Use a completely different approach`,
+          `Ignore the concepts from ${title}`,
+          `Refer to outdated methods instead`
+        ];
+      default:
+        return ['Option A', 'Option B', 'Option C', 'Option D'];
+    }
+  }
+
+  private generateScenarioOptions(title: string): string[] {
+    return [
+      `Systematically apply the methodology from ${title}`,
+      `Use trial and error without structured approach`,
+      `Delegate the problem to someone else`,
+      `Apply principles selectively based on context`
+    ];
+  }
+
+  private generateExplanation(type: string, questionNum: number): string {
+    switch (type) {
+      case 'multiple_choice':
+        return `This question tests your understanding of core concepts and their practical application. The correct answer demonstrates proper application of the learned principles.`;
+      case 'scenario_based':
+        return `This scenario-based question evaluates your ability to transfer learning to real-world situations and make informed decisions.`;
+      case 'reflective':
+        return `This reflective question assesses your depth of understanding and ability to articulate complex concepts clearly.`;
+      case 'true_false':
+        return `This statement tests your understanding of the scope and limitations of the concepts covered.`;
+      default:
+        return `This is a sample explanation for question #${questionNum}`;
+    }
   }
 
   async getAssessmentAnalytics(assessmentId: string): Promise<AssessmentAnalytics> {
@@ -321,4 +396,3 @@ class MockAssessmentApi {
 }
 
 export const mockAssessmentApi = new MockAssessmentApi();
-export type { Assessment, Question, AssessmentAnalytics };

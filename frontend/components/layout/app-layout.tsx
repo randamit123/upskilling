@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { usePathname } from "next/navigation"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Breadcrumbs } from "@/components/layout/breadcrumbs"
@@ -16,12 +16,21 @@ const publicPaths = ['/', '/auth'];
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { collapsed } = useSidebarStore();
-  const { user, isLoading } = useAuthStore();
+  const { user, isLoading, isInitialized } = useAuthStore();
   const pathname = usePathname();
+  
+  // Show loading while initializing auth
+  if (!isInitialized) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
   
   // Determine if we should show the app shell (sidebar, breadcrumbs, etc)
   const isPublicPath = publicPaths.includes(pathname);
-  const showAppShell = !isPublicPath || (user && !isLoading);
+  const showAppShell = !isPublicPath && user && !isLoading;
   
   // If on a public path or user is not authenticated, just show the content
   if (!showAppShell) {

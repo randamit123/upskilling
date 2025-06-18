@@ -251,7 +251,7 @@ export default function AssessmentsPage() {
             </div>
             <h3 className="text-lg font-medium mb-1">Create New Assessment</h3>
             <p className="text-center text-sm text-muted-foreground">
-              Add a quiz, test, exam or survey to measure learning outcomes
+              Add a quiz, test, or exam to measure learning outcomes
             </p>
           </Card>
         </div>

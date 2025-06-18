@@ -10,8 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Save, Upload, Settings, BarChart, FileText, Trash2, Pencil } from 'lucide-react';
+import { Plus, Save, Upload, Settings, BarChart, FileText, Trash2, Pencil, Eye, CheckCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { mockAssessmentApi, type Assessment, type Question, type QuestionType } from '@/services/mockAssessmentApi';
+import { AIQuestionGenerator } from '@/components/assessments/AIQuestionGenerator';
 
 export default function NewAssessmentPage() {
   const router = useRouter();
@@ -34,6 +36,14 @@ export default function NewAssessmentPage() {
   const [questionBanks, setQuestionBanks] = useState<any[]>([]);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
+  const [learningOutcomes, setLearningOutcomes] = useState('');
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [questionMix, setQuestionMix] = useState({
+    multiple_choice: 40,
+    scenario_based: 30,
+    reflective: 20,
+    true_false: 10
+  });
 
   useEffect(() => {
     // Load assessment types or other initial data
@@ -135,18 +145,34 @@ export default function NewAssessmentPage() {
       return;
     }
 
+    // Calculate question count based on percentages
+    const totalQuestions = 10; // Default total questions
+    const questionCounts = {
+      multiple_choice: Math.round((questionMix.multiple_choice / 100) * totalQuestions),
+      scenario_based: Math.round((questionMix.scenario_based / 100) * totalQuestions),
+      reflective: Math.round((questionMix.reflective / 100) * totalQuestions),
+      true_false: Math.round((questionMix.true_false / 100) * totalQuestions)
+    };
+
     try {
       const questions = await mockAssessmentApi.generateQuestionBank({
-        topic: assessment.title,
-        count: 5,
-        difficulty: 'medium',
-        questionTypes: ['multiple_choice', 'true_false']
+        assessmentTitle: assessment.title,
+        assessmentDescription: assessment.description || '',
+        learningOutcomes: learningOutcomes,
+        uploadedFile: uploadedFile,
+        questionMix: questionMix,
+        questionCounts: questionCounts,
+        assessmentType: assessment.type,
+        timeLimit: assessment.timeLimit,
+        count: totalQuestions,
+        difficulty: 'medium'
       });
       
       setQuestionBanks(prev => [...prev, {
         id: `bank-${Date.now()}`,
-        name: `Generated Bank - ${new Date().toLocaleString()}`,
-        questions
+        name: `AI Generated - ${new Date().toLocaleString()}`,
+        questions,
+        isAIGenerated: true
       }]);
     } catch (error) {
       console.error('Failed to generate question bank:', error);
@@ -179,6 +205,25 @@ export default function NewAssessmentPage() {
     addQuestions().catch(() => {
       alert('Failed to add some questions from the bank. Please try again.');
     });
+  };
+
+  const handleAIQuestionsGenerated = (aiQuestions: any[]) => {
+    // Convert AI questions to the format expected by the assessment
+    const convertedQuestions = aiQuestions.map(q => ({
+      type: q.type,
+      prompt: q.prompt,
+      options: q.options,
+      answer: q.answer,
+      points: q.points,
+      explanation: q.explanation
+    }));
+    
+    // Add to the current question bank
+    setQuestionBanks(prev => [...prev, {
+      id: `ai-bank-${Date.now()}`,
+      name: `AI Generated Questions - ${new Date().toLocaleString()}`,
+      questions: convertedQuestions
+    }]);
   };
 
   return (
@@ -226,6 +271,165 @@ export default function NewAssessmentPage() {
         </TabsList>
 
         <TabsContent value="settings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Content Upload</CardTitle>
+              <CardDescription>
+                Upload learning materials to automatically generate questions aligned with learning outcomes
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+                <div className="text-center">
+                  <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <div className="mt-4">
+                    <Button variant="outline" onClick={() => document.getElementById('file-upload')?.click()}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Content
+                    </Button>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.doc,.docx,.txt,.ppt,.pptx"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setUploadedFile(file);
+                          console.log('File selected:', file.name);
+                        }
+                      }}
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Upload PDF, Word documents, PowerPoint, or text files
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Maximum file size: 10MB
+                  </p>
+                </div>
+              </div>
+              
+              {uploadedFile && (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                  <FileText className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-800">
+                    {uploadedFile.name}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setUploadedFile(null)}
+                    className="ml-auto h-6 w-6 p-0"
+                  >
+                    ×
+                  </Button>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="learning-outcomes">Learning Outcomes</Label>
+                  <Textarea
+                    id="learning-outcomes"
+                    placeholder="Enter the learning outcomes this assessment should measure..."
+                    rows={4}
+                    value={learningOutcomes}
+                    onChange={(e) => setLearningOutcomes(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Define what learners should be able to do after completing the associated content
+                  </p>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="question-mix">Question Type Mix (%)</Label>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Label className="w-32 text-sm">Multiple Choice</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={questionMix.multiple_choice}
+                          onChange={(e) => setQuestionMix({
+                            ...questionMix,
+                            multiple_choice: parseInt(e.target.value) || 0
+                          })}
+                          className="w-20"
+                        />
+                        <span className="text-sm text-muted-foreground">%</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Label className="w-32 text-sm">Scenario-Based</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={questionMix.scenario_based}
+                          onChange={(e) => setQuestionMix({
+                            ...questionMix,
+                            scenario_based: parseInt(e.target.value) || 0
+                          })}
+                          className="w-20"
+                        />
+                        <span className="text-sm text-muted-foreground">%</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Label className="w-32 text-sm">Reflective</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={questionMix.reflective}
+                          onChange={(e) => setQuestionMix({
+                            ...questionMix,
+                            reflective: parseInt(e.target.value) || 0
+                          })}
+                          className="w-20"
+                        />
+                        <span className="text-sm text-muted-foreground">%</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Label className="w-32 text-sm">True/False</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={questionMix.true_false}
+                          onChange={(e) => setQuestionMix({
+                            ...questionMix,
+                            true_false: parseInt(e.target.value) || 0
+                          })}
+                          className="w-20"
+                        />
+                        <span className="text-sm text-muted-foreground">%</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Total: {Object.values(questionMix).reduce((sum, val) => sum + val, 0)}%
+                        {Object.values(questionMix).reduce((sum, val) => sum + val, 0) !== 100 && (
+                          <span className="text-destructive ml-2">
+                            (Should total 100%)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    className="w-full" 
+                    onClick={handleGenerateQuestionBank}
+                    disabled={!assessment.title || Object.values(questionMix).reduce((sum, val) => sum + val, 0) !== 100}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Generate AI Questions
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Basic Information</CardTitle>
@@ -459,30 +663,54 @@ export default function NewAssessmentPage() {
           {questionBanks.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Question Banks</CardTitle>
+                <CardTitle>Generated Question Banks</CardTitle>
                 <CardDescription>
-                  Generated question banks that you can add to your assessment
+                  Review and edit AI-generated questions before adding them to your assessment
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {questionBanks.map((bank) => (
-                    <div key={bank.id} className="border rounded-md p-4">
-                      <div className="flex justify-between items-center">
+                    <div key={bank.id} className="border rounded-md">
+                      <div className="flex justify-between items-center p-4 border-b bg-muted/50">
                         <div>
                           <h4 className="font-medium">{bank.name}</h4>
                           <p className="text-sm text-muted-foreground">
-                            {bank.questions.length} questions
+                            {bank.questions.length} questions • Click questions below to review and edit
                           </p>
                         </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleAddQuestionsFromBank(bank.questions)}
-                        >
-                          Add to Assessment
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleAddQuestionsFromBank(bank.questions)}
+                          >
+                            Add All to Assessment
+                          </Button>
+                        </div>
                       </div>
+                      
+                      {bank.isAIGenerated && (
+                        <QuestionReviewSection 
+                          questions={bank.questions}
+                          onQuestionEdit={(questionIndex, updatedQuestion) => {
+                            const updatedQuestions = [...bank.questions];
+                            updatedQuestions[questionIndex] = updatedQuestion;
+                            setQuestionBanks(prev => prev.map(b => 
+                              b.id === bank.id 
+                                ? { ...b, questions: updatedQuestions }
+                                : b
+                            ));
+                          }}
+                          onAddQuestion={(question) => {
+                            if (assessment.id) {
+                              handleSaveQuestion(question);
+                            } else {
+                              alert('Please save the assessment first before adding questions');
+                            }
+                          }}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -644,6 +872,223 @@ export default function NewAssessmentPage() {
   );
 }
 
+// Question Review Section Component
+function QuestionReviewSection({
+  questions,
+  onQuestionEdit,
+  onAddQuestion
+}: {
+  questions: Omit<Question, 'id'>[];
+  onQuestionEdit: (questionIndex: number, updatedQuestion: Omit<Question, 'id'>) => void;
+  onAddQuestion: (question: Omit<Question, 'id'>) => void;
+}) {
+  const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
+  const [questionEdits, setQuestionEdits] = useState<Record<number, Omit<Question, 'id'>>>({});
+
+  const handleEditQuestion = (questionIndex: number) => {
+    setEditingQuestion(questionIndex);
+    setQuestionEdits(prev => ({
+      ...prev,
+      [questionIndex]: { ...questions[questionIndex] }
+    }));
+  };
+
+  const handleSaveEdit = (questionIndex: number) => {
+    const editedQuestion = questionEdits[questionIndex];
+    if (editedQuestion) {
+      onQuestionEdit(questionIndex, editedQuestion);
+      setEditingQuestion(null);
+      setQuestionEdits(prev => {
+        const newEdits = { ...prev };
+        delete newEdits[questionIndex];
+        return newEdits;
+      });
+    }
+  };
+
+  const handleCancelEdit = (questionIndex: number) => {
+    setEditingQuestion(null);
+    setQuestionEdits(prev => {
+      const newEdits = { ...prev };
+      delete newEdits[questionIndex];
+      return newEdits;
+    });
+  };
+
+  const updateQuestionEdit = (questionIndex: number, field: string, value: any) => {
+    setQuestionEdits(prev => ({
+      ...prev,
+      [questionIndex]: {
+        ...prev[questionIndex],
+        [field]: value
+      }
+    }));
+  };
+
+  return (
+    <div className="space-y-3">
+      {questions.map((question, index) => {
+        const isEditing = editingQuestion === index;
+        const isExpanded = expandedQuestion === index;
+        const currentQuestion = isEditing ? (questionEdits[index] || question) : question;
+
+        return (
+          <div key={index} className="border-b last:border-b-0 p-4">
+            <div className="flex justify-between items-start gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-semibold text-sm">Q{index + 1}.</span>
+                  <Badge variant="outline" className="text-xs">
+                    {currentQuestion.type.replace('_', ' ')}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                
+                {isEditing ? (
+                  <div className="space-y-3">
+                    <Textarea
+                      value={currentQuestion.prompt}
+                      onChange={(e) => updateQuestionEdit(index, 'prompt', e.target.value)}
+                      className="min-h-[60px]"
+                    />
+                    
+                    {currentQuestion.options && (
+                      <div className="space-y-2">
+                        <Label className="text-sm">Options:</Label>
+                        {currentQuestion.options.map((option, optIndex) => (
+                          <div key={optIndex} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name={`question-${index}-answer`}
+                              checked={currentQuestion.answer === option}
+                              onChange={() => updateQuestionEdit(index, 'answer', option)}
+                              className="h-4 w-4"
+                            />
+                            <Input
+                              value={option}
+                              onChange={(e) => {
+                                const newOptions = [...currentQuestion.options!];
+                                newOptions[optIndex] = e.target.value;
+                                updateQuestionEdit(index, 'options', newOptions);
+                                // Update answer if this was the selected option
+                                if (currentQuestion.answer === option) {
+                                  updateQuestionEdit(index, 'answer', e.target.value);
+                                }
+                              }}
+                              className="flex-1"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-sm">Points</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={currentQuestion.points}
+                          onChange={(e) => updateQuestionEdit(index, 'points', parseInt(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm">Explanation</Label>
+                      <Textarea
+                        value={currentQuestion.explanation || ''}
+                        onChange={(e) => updateQuestionEdit(index, 'explanation', e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm mb-2">{currentQuestion.prompt}</p>
+                    
+                    {isExpanded && currentQuestion.options && (
+                      <div className="space-y-1 mb-3">
+                        {currentQuestion.options.map((option, optIndex) => (
+                          <div 
+                            key={optIndex} 
+                            className={`text-sm p-2 rounded ${
+                              option === currentQuestion.answer 
+                                ? 'bg-green-50 border-green-200 border' 
+                                : 'bg-muted/30'
+                            }`}
+                          >
+                            <span className="font-medium mr-2">
+                              {String.fromCharCode(65 + optIndex)}.
+                            </span>
+                            {option}
+                            {option === currentQuestion.answer && (
+                              <CheckCircle className="inline ml-2 h-4 w-4 text-green-600" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {isExpanded && currentQuestion.explanation && (
+                      <div className="bg-yellow-50 border-yellow-200 border p-3 rounded mt-3">
+                        <p className="text-sm">
+                          <span className="font-medium">Explanation: </span>
+                          {currentQuestion.explanation}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex gap-1">
+                {isEditing ? (
+                  <>
+                    <Button size="sm" onClick={() => handleSaveEdit(index)}>
+                      Save
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleCancelEdit(index)}>
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setExpandedQuestion(isExpanded ? null : index)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleEditQuestion(index)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onAddQuestion(currentQuestion)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // Question Editor Modal Component
 function QuestionEditorModal({
   question,
@@ -795,14 +1240,14 @@ function QuestionEditorModal({
                         placeholder={`Option ${index + 1}`}
                         required
                       />
-                      {options.length > 2 && (
+                      {type === 'multiple_choice' && options.length > 2 && (
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
                           onClick={() => removeOption(index)}
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
@@ -814,57 +1259,57 @@ function QuestionEditorModal({
                       variant="outline"
                       size="sm"
                       onClick={addOption}
-                      className="mt-2"
                     >
-                      <Plus className="mr-1 h-4 w-4" />
+                      <Plus className="mr-2 h-4 w-4" />
                       Add Option
                     </Button>
                   )}
                 </div>
               </div>
             )}
-            
+
             {type === 'short_answer' && (
               <div>
-                <Label htmlFor="answer">Sample Answer *</Label>
+                <Label htmlFor="sample-answer">Sample Answer *</Label>
                 <Textarea
-                  id="answer"
-                  value={answer as string}
+                  id="sample-answer"
+                  value={typeof answer === 'string' ? answer : ''}
                   onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="Enter a sample answer"
+                  placeholder="Enter a sample correct answer"
                   className="mt-1"
-                  rows={2}
+                  rows={3}
                   required
                 />
               </div>
             )}
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="points">Points</Label>
+                <Label htmlFor="points">Points *</Label>
                 <Input
                   id="points"
                   type="number"
                   min="1"
                   value={points}
                   onChange={(e) => setPoints(parseInt(e.target.value))}
-                  className="mt-1"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="explanation">Explanation (Optional)</Label>
-                <Input
-                  id="explanation"
-                  value={explanation}
-                  onChange={(e) => setExplanation(e.target.value)}
-                  placeholder="Add an explanation for the answer"
-                  className="mt-1"
+                  required
                 />
               </div>
             </div>
-            
-            <div className="flex justify-end gap-2 pt-4">
+
+            <div>
+              <Label htmlFor="explanation">Explanation (Optional)</Label>
+              <Textarea
+                id="explanation"
+                value={explanation}
+                onChange={(e) => setExplanation(e.target.value)}
+                placeholder="Provide an explanation for the correct answer"
+                className="mt-1"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>

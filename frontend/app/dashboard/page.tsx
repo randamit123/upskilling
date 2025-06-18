@@ -73,10 +73,13 @@ export default function DashboardPage() {
                     <a href="/courses">Create New Course</a>
                   </Button>
                   <Button variant="outline" className="w-full justify-start" asChild>
-                    <a href="/assessments/new">Create Assessment</a>
+                    <a href="/assessments">Create Assessment</a>
                   </Button>
                   <Button variant="outline" className="w-full justify-start" asChild>
-                    <a href="/microlearning">Build Microlearning</a>
+                    <a href="/learning-path">Build Learning Path</a>
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start" asChild>
+                    <a href="/impact">View Impact Analytics</a>
                   </Button>
                 </CardContent>
               </Card>

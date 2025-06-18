@@ -7,7 +7,7 @@ export default function LearningPathPage() {
       description="Create structured learning journeys across multiple courses and activities"
       features={[
         "Design sequential learning paths with clear progression",
-        "Combine courses, microlearning, and assessments into cohesive journeys",
+        "Combine courses, assessments into cohesive learning journeys",
         "Set prerequisites and completion requirements",
         "Track learner progress through learning paths",
         "Offer certificates upon successful completion",

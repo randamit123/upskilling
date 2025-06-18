@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useSidebarStore } from "@/store/sidebarStore"
+import { useUserProfileStore } from "@/store/userProfileStore"
 import { useToast } from "@/components/ui/use-toast"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -22,25 +23,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import {
   BookOpen,
-  FileText,
-  ClipboardList,
   Route,
-  Users,
   FileCheck,
-  Database,
-  Tags,
-  Mail,
   BarChart3,
   ChevronLeft,
   ChevronRight,
-  Bell,
   Search,
   User,
   LogOut,
   Settings,
   HelpCircle,
-  Building2,
-  ChevronsUpDown,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -51,8 +43,13 @@ interface SidebarProps {
 export function Sidebar({ open, setOpen }: SidebarProps) {
   const pathname = usePathname()
   const { collapsed, toggleCollapsed, setCollapsed } = useSidebarStore()
+  const { profile } = useUserProfileStore()
   const { toast } = useToast()
   const [commandOpen, setCommandOpen] = useState(false)
+  
+  // Get display name and initials from profile
+  const displayName = `${profile.firstName} ${profile.lastName}`
+  const initials = `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}`
   
   // Handle keyboard shortcut for command palette
   useEffect(() => {
@@ -67,7 +64,7 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
 
-  // Primary navigation routes
+  // Primary navigation routes - simplified to only include the requested modules
   const primaryRoutes = [
     {
       title: "Course Development",
@@ -76,52 +73,16 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
       active: pathname.startsWith("/courses"),
     },
     {
-      title: "Microlearning",
-      href: "/microlearning",
-      icon: FileText,
-      active: pathname.startsWith("/microlearning"),
-    },
-    {
-      title: "Survey Builder",
-      href: "/survey",
-      icon: ClipboardList,
-      active: pathname.startsWith("/survey"),
-    },
-    {
       title: "Learning Paths",
       href: "/learning-path",
       icon: Route,
       active: pathname.startsWith("/learning-path"),
     },
     {
-      title: "Role Paths",
-      href: "/roles",
-      icon: Users,
-      active: pathname.startsWith("/roles"),
-    },
-    {
       title: "Assessments",
       href: "/assessments",
       icon: FileCheck,
       active: pathname.startsWith("/assessments"),
-    },
-    {
-      title: "Knowledge",
-      href: "/knowledge",
-      icon: Database,
-      active: pathname.startsWith("/knowledge"),
-    },
-    {
-      title: "Content Tagging",
-      href: "/tagging",
-      icon: Tags,
-      active: pathname.startsWith("/tagging"),
-    },
-    {
-      title: "Communications",
-      href: "/comms",
-      icon: Mail,
-      active: pathname.startsWith("/comms"),
     },
     {
       title: "Impact",
@@ -139,57 +100,63 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
       onClick: () => setCommandOpen(true),
       shortcut: "⌘K",
     },
-    {
-      title: "Notifications",
-      icon: Bell,
-      onClick: () => {
-        toast({
-          title: "Notifications",
-          description: "You have no new notifications",
-        })
-      },
-    },
   ]
 
   const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => {
     return (
       <div className="flex h-full flex-col">
         {/* Section 1: Brand & Collapse Toggle */}
-        <div className={cn(
-          "flex h-14 items-center border-b px-4", 
-          collapsed && !mobile ? "justify-center" : "justify-between"
-        )}>
-          {(!collapsed || mobile) && (
-            <Link href="/" className="flex items-center gap-2" aria-label="Home">
-              <div className="h-8 w-8 rounded-md bg-[#582873] flex items-center justify-center"></div>
-              <span className="font-semibold text-lg">Upskilling Hub</span>
-            </Link>
-          )}
-          {collapsed && !mobile && (
-            <Link href="/" className="flex items-center justify-center" aria-label="Home">
-              <div className="h-8 w-8 rounded-md bg-[#582873] flex items-center justify-center"></div>
-            </Link>
-          )}
+        <div className="flex h-14 items-center border-b px-2 justify-between">
+          {/* Brand Logo */}
+          <div className="flex items-center justify-center flex-1">
+            {(!collapsed || mobile) ? (
+              <Link href="/" className="flex items-center gap-2" aria-label="Home">
+                <img 
+                  src="/logo.png" 
+                  alt="Leidos Upskilling Hub" 
+                  className="h-10 w-10"
+                />
+                <span className="font-semibold text-lg">Upskilling Hub</span>
+              </Link>
+            ) : (
+              <Link href="/" className="flex items-center justify-center" aria-label="Home">
+                <img 
+                  src="/logo.png" 
+                  alt="Leidos Upskilling Hub" 
+                  className="h-10 w-10"
+                />
+              </Link>
+            )}
+          </div>
+          
+          {/* Collapse Toggle - Always visible on desktop */}
           {!mobile && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={toggleCollapsed} 
-              className="hidden lg:flex"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            </Button>
+            <div className="flex-shrink-0">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={toggleCollapsed} 
+                className="h-8 w-8 p-0 hidden lg:flex hover:bg-accent/50 rounded-sm"
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              </Button>
+            </div>
           )}
+          
+          {/* Mobile Close Button */}
           {mobile && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setOpen(false)}
-              aria-label="Close sidebar"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+            <div className="flex-shrink-0">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setOpen(false)}
+                className="h-8 w-8 p-0 rounded-sm"
+                aria-label="Close sidebar"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
         
@@ -218,36 +185,7 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
           <div className="px-2 mb-6">
             <Separator className="my-2" />
             
-            {/* Organization Switcher */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className={cn(
-                    "w-full justify-start mb-1 focus:outline-none focus:ring-2 focus:ring-primary",
-                    collapsed && !mobile && "justify-center px-0"
-                  )}
-                  aria-label="Organization settings"
-                >
-                  <Building2 className="h-4 w-4 mr-2" />
-                  {(!collapsed || mobile) && (
-                    <>
-                      <span className="flex-1 text-left">Organization</span>
-                      <ChevronsUpDown className="h-4 w-4 ml-2" />
-                    </>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuLabel>Organization</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Upskilling Hub</DropdownMenuItem>
-                <DropdownMenuItem>Training Division</DropdownMenuItem>
-                <DropdownMenuItem>Learning Center</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            {/* Utility Items (Search, Notifications) */}
+            {/* Utility Items (Search only) */}
             {utilityItems.map((item, index) => (
               <Button
                 key={index}
@@ -289,22 +227,23 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
                 aria-label="User menu"
               >
                 <Avatar className="h-6 w-6 mr-2">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">JD</AvatarFallback>
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
                 </Avatar>
-                {(!collapsed || mobile) && <span className="flex-1 text-left">John Doe</span>}
+                {(!collapsed || mobile) && <span className="flex-1 text-left">{displayName}</span>}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <Link href="/profile" passHref legacyBehavior>
+              {/* Content Creator Profile feature temporarily disabled */}
+              {/* <Link href="/profile" passHref legacyBehavior>
                 <DropdownMenuItem asChild>
                   <a className="w-full cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </a>
                 </DropdownMenuItem>
-              </Link>
+              </Link> */}
               <Link href="/settings" passHref legacyBehavior>
                 <DropdownMenuItem asChild>
                   <a className="w-full cursor-pointer">
