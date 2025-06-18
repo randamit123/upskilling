@@ -29,7 +29,7 @@ export default function HelpPage() {
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Getting Started</CardTitle>
-              <CardDescription>Learn the basics of the Upskilling Hub</CardDescription>
+              <CardDescription>Learn the basics of the Leidos Upskilling Hub platform</CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm">
@@ -58,15 +58,14 @@ export default function HelpPage() {
           
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Assessments & Surveys</CardTitle>
-              <CardDescription>Help with creating evaluations</CardDescription>
+              <CardTitle className="text-lg">Assessments</CardTitle>
+              <CardDescription>Learn how to create and manage assessments</CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm">
                 <li className="text-primary hover:underline cursor-pointer">Creating Assessments</li>
-                <li className="text-primary hover:underline cursor-pointer">Building Surveys</li>
-                <li className="text-primary hover:underline cursor-pointer">Viewing Results</li>
-                <li className="text-primary hover:underline cursor-pointer">Analyzing Feedback</li>
+                <li className="text-primary hover:underline cursor-pointer">Assessment Types</li>
+                <li className="text-primary hover:underline cursor-pointer">Grading & Feedback</li>
               </ul>
             </CardContent>
           </Card>

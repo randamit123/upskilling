@@ -40,6 +40,9 @@ export default function ProfilePage() {
   const [isAddingGoal, setIsAddingGoal] = useState(false);
   const [isAddingTopic, setIsAddingTopic] = useState(false);
   
+  // Get full name from firstName and lastName
+  const fullName = `${profile.firstName} ${profile.lastName}`;
+  
   // Sample content metrics
   const contentMetrics: ContentMetrics = {
     coursesCreated: Array.isArray(profile.createdCourses) ? profile.createdCourses.length : 0,
@@ -48,18 +51,18 @@ export default function ProfilePage() {
     totalLearners: 348 // Sample data
   };
   
-  // Default content creation skills
-  const defaultSkills: SkillItem[] = [
-    { name: "Instructional Design", level: 4 },
-    { name: "Assessment Creation", level: 3 },
-    { name: "Learning Objectives", level: 4 },
-    { name: "Microlearning", level: 3 },
-  ];
-  
-  // Content creation skills - ensure it's an array
-  const contentSkills: SkillItem[] = Array.isArray(profile.contentExpertise) 
-    ? profile.contentExpertise 
-    : defaultSkills;
+  // Content creation skills - use the skills from profile, with fallback
+  const contentSkills: SkillItem[] = Array.isArray(profile.skills) && profile.skills.length > 0
+    ? profile.skills 
+    : [
+        { name: "Instructional Design", level: 4 },
+        { name: "Assessment Creation", level: 3 },
+        { name: "Learning Objectives", level: 4 },
+        { name: "Course Development", level: 4 },
+        { name: "Learning Paths", level: 3 },
+        { name: "Assessment Design", level: 3 },
+        { name: "Impact Analytics", level: 2 },
+      ];
   
   // Handler for adding a new content goal
   const handleAddGoal = () => {
@@ -82,8 +85,8 @@ export default function ProfilePage() {
   return (
     <div className="container mx-auto py-6">
       <PageHeader
-        heading="Content Creator Profile"
-        text="Manage your profile, content creation skills, and expertise areas"
+        title="Content Creator Profile"
+        description="Manage your profile, content creation skills, and expertise areas"
       />
 
       <div className="grid gap-6 md:grid-cols-7 lg:gap-10">
@@ -92,11 +95,11 @@ export default function ProfilePage() {
             <CardHeader className="space-y-4">
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage alt={profile.name || "User"} src={profile.avatar || ""} />
-                  <AvatarFallback>{profile.name?.charAt(0) || "U"}</AvatarFallback>
+                  <AvatarImage alt={fullName || "User"} src={profile.avatar || ""} />
+                  <AvatarFallback>{fullName.charAt(0) || "U"}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <CardTitle className="text-2xl">{profile.name || "User Name"}</CardTitle>
+                  <CardTitle className="text-2xl">{fullName || "User Name"}</CardTitle>
                   <CardDescription>{profile.role || "Content Creator"}</CardDescription>
                   <Badge variant="outline" className="mt-1">
                     {profile.department || "Learning & Development"}
@@ -313,16 +316,16 @@ export default function ProfilePage() {
                 <CardContent className="p-0">
                   {Array.isArray(profile.createdCourses) && profile.createdCourses.length > 0 ? (
                     <div className="divide-y">
-                      {profile.createdCourses.map((course: any, index: number) => (
+                      {profile.createdCourses.map((courseId: string, index: number) => (
                         <div key={index} className="flex items-center justify-between p-4">
                           <div>
-                            <h3 className="font-medium">{course.title}</h3>
+                            <h3 className="font-medium">{courseId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</h3>
                             <p className="text-sm text-muted-foreground">
-                              Last updated: {course.lastUpdated}
+                              Course ID: {courseId}
                             </p>
                           </div>
                           <div className="flex items-center">
-                            <Badge>{course.status}</Badge>
+                            <Badge>Published</Badge>
                             <Button variant="ghost" size="sm" className="ml-2">
                               <ArrowRight className="h-4 w-4" />
                             </Button>
@@ -348,12 +351,12 @@ export default function ProfilePage() {
                 <CardContent className="p-0">
                   {Array.isArray(profile.draftCourses) && profile.draftCourses.length > 0 ? (
                     <div className="divide-y">
-                      {profile.draftCourses.map((course: any, index: number) => (
+                      {profile.draftCourses.map((courseId: string, index: number) => (
                         <div key={index} className="flex items-center justify-between p-4">
                           <div>
-                            <h3 className="font-medium">{course.title}</h3>
+                            <h3 className="font-medium">{courseId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</h3>
                             <p className="text-sm text-muted-foreground">
-                              Last updated: {course.lastUpdated}
+                              Course ID: {courseId}
                             </p>
                           </div>
                           <div className="flex items-center">
@@ -393,17 +396,17 @@ export default function ProfilePage() {
                 <CardContent className="p-0">
                   {Array.isArray(profile.authoredContent) && profile.authoredContent.length > 0 ? (
                     <div className="divide-y">
-                      {profile.authoredContent.map((content: any, index: number) => (
+                      {profile.authoredContent.map((content, index: number) => (
                         <div key={index} className="flex items-center justify-between p-4">
                           <div>
-                            <h3 className="font-medium">{content.title}</h3>
+                            <h3 className="font-medium">{content.name}</h3>
                             <p className="text-sm text-muted-foreground">
-                              {content.type} • Created: {content.created}
+                              {content.type} • Created: {content.creationDate}
                             </p>
                           </div>
                           <div className="flex items-center">
-                            <Badge variant={content.published ? "default" : "outline"}>
-                              {content.published ? "Published" : "Draft"}
+                            <Badge variant="default">
+                              Published
                             </Badge>
                             <Button variant="ghost" size="sm" className="ml-2">
                               <ArrowRight className="h-4 w-4" />
@@ -422,27 +425,22 @@ export default function ProfilePage() {
               
               <Card>
                 <CardHeader>
-                  <CardTitle>Content Ideas</CardTitle>
+                  <CardTitle>Content Expertise</CardTitle>
                   <CardDescription>
-                    Your saved content ideas and inspiration
+                    Your primary areas of content expertise
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ScrollArea className="h-[200px]">
-                    <div className="space-y-4">
-                      {Array.isArray(profile.contentIdeas) && profile.contentIdeas.length > 0 ? (
-                        profile.contentIdeas.map((idea: string, index: number) => (
-                          <div key={index} className="rounded-md border p-3">
-                            <p className="text-sm">{idea}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center text-muted-foreground">
-                          No content ideas saved yet
-                        </div>
-                      )}
+                  <div className="space-y-4">
+                    <div className="rounded-md border p-3">
+                      <p className="text-sm font-medium">Primary Expertise</p>
+                      <p className="text-lg">{profile.contentExpertise || "Not specified"}</p>
                     </div>
-                  </ScrollArea>
+                    <div className="rounded-md border p-3">
+                      <p className="text-sm font-medium">Department</p>
+                      <p className="text-lg">{profile.department || "Not specified"}</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

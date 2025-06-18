@@ -1,31 +1,27 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import {
-  CommandDialog as CommandDialogPrimitive,
+  CommandDialog as UICommandDialog,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
   CommandSeparator,
+  CommandShortcut,
 } from "@/components/ui/command"
 import {
   BookOpen,
-  FileText,
-  ClipboardList,
   Route,
-  Users,
   FileCheck,
-  Database,
-  Tags,
-  Mail,
   BarChart3,
-  Settings,
   User,
+  Settings,
   HelpCircle,
+  Search,
 } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 interface CommandDialogProps {
   open: boolean
@@ -34,91 +30,71 @@ interface CommandDialogProps {
 
 export function CommandDialog({ open, onOpenChange }: CommandDialogProps) {
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
 
-  // Handle keyboard shortcut
   useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        onOpenChange(true)
-      }
-    }
-
-    document.addEventListener("keydown", down)
-    return () => document.removeEventListener("keydown", down)
-  }, [onOpenChange])
+    setMounted(true)
+  }, [])
 
   const runCommand = (command: () => void) => {
     onOpenChange(false)
     command()
   }
 
+  if (!mounted) {
+    return null
+  }
+
   return (
-    <CommandDialogPrimitive open={open} onOpenChange={onOpenChange}>
+    <UICommandDialog open={open} onOpenChange={onOpenChange}>
       <CommandInput placeholder="Type a command or search..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Modules">
+        <CommandGroup heading="Core Modules">
           <CommandItem onSelect={() => runCommand(() => router.push("/courses"))}>
             <BookOpen className="mr-2 h-4 w-4" />
             <span>Course Development</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push("/microlearning"))}>
-            <FileText className="mr-2 h-4 w-4" />
-            <span>Microlearning Modules</span>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push("/survey"))}>
-            <ClipboardList className="mr-2 h-4 w-4" />
-            <span>Evaluation Survey Builder</span>
-          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push("/learning-path"))}>
             <Route className="mr-2 h-4 w-4" />
-            <span>Skills-Based Learning Paths</span>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push("/roles"))}>
-            <Users className="mr-2 h-4 w-4" />
-            <span>Role-Specific Paths</span>
+            <span>Learning Paths</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push("/assessments"))}>
             <FileCheck className="mr-2 h-4 w-4" />
-            <span>Assessment Generation</span>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push("/knowledge"))}>
-            <Database className="mr-2 h-4 w-4" />
-            <span>Knowledge Extraction</span>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push("/tagging"))}>
-            <Tags className="mr-2 h-4 w-4" />
-            <span>Content Tagging</span>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push("/comms"))}>
-            <Mail className="mr-2 h-4 w-4" />
-            <span>Learner Communications</span>
+            <span>Assessments</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push("/impact"))}>
             <BarChart3 className="mr-2 h-4 w-4" />
-            <span>Training Impact</span>
+            <span>Impact Analytics</span>
           </CommandItem>
         </CommandGroup>
         <CommandSeparator />
-        <CommandGroup heading="Account">
+        <CommandGroup heading="Settings">
           <CommandItem onSelect={() => runCommand(() => router.push("/profile"))}>
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
+            <CommandShortcut>⌘P</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push("/settings"))}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
+            <CommandShortcut>⌘S</CommandShortcut>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => router.push("/help"))}>
+            <HelpCircle className="mr-2 h-4 w-4" />
+            <span>Help</span>
+            <CommandShortcut>⌘H</CommandShortcut>
           </CommandItem>
         </CommandGroup>
         <CommandSeparator />
-        <CommandGroup heading="Help">
-          <CommandItem onSelect={() => runCommand(() => window.open("https://help.upskilling.com", "_blank"))}>
-            <HelpCircle className="mr-2 h-4 w-4" />
-            <span>Documentation</span>
+        <CommandGroup heading="Search">
+          <CommandItem onSelect={() => runCommand(() => router.push("/dashboard"))}>
+            <Search className="mr-2 h-4 w-4" />
+            <span>Search All Content</span>
+            <CommandShortcut>⌘⇧F</CommandShortcut>
           </CommandItem>
         </CommandGroup>
       </CommandList>
-    </CommandDialogPrimitive>
+    </UICommandDialog>
   )
 }

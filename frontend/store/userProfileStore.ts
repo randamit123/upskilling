@@ -47,7 +47,7 @@ export const useUserProfileStore = create<UserProfileState>()(
         firstName: "John",
         lastName: "Doe",
         email: "john.doe@leidos.com",
-        department: "Upskilling Hub",
+        department: "Leidos Upskilling Hub",
         role: "Learning Experience Designer",
         contentExpertise: "Instructional Design",
         topicsOfInterest: ["AI/ML", "Cloud", "Cybersecurity"],

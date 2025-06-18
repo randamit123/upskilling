@@ -52,4 +52,10 @@ export function CourseSkillsTagging({ courseData, updateCourseData }: CourseSkil
 
   return (
     <div className="space-y-6">
-      <div>\
+      <div className="text-center text-muted-foreground">
+        <p>Skills tagging component will be implemented here</p>
+        <p>Selected skills: {selectedSkills.join(', ') || 'None'}</p>
+      </div>
+    </div>
+  )
+}
